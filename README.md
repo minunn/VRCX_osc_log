@@ -1,3 +1,5 @@
+This is not the official VRCX repo ! go to https://github.com/vrcx-team/VRCX/ !
+
 <div align="center">
 
 # <img src="https://raw.githubusercontent.com/vrcx-team/VRCX/master/VRCX.ico" width="64" height="64"> </img> VRCX
