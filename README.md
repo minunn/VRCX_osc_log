@@ -1,6 +1,6 @@
 This is not the official VRCX repo ! go to https://github.com/vrcx-team/VRCX/ !
 
-# The OSC part will only work of me since it is using something that is not in the repo and will not be in the repo / This fork was mainly made for facilitate updates when vrcx is updated !
+# The OSC part will only work for me since it is using something that is not in the repo and will not be in the repo / This fork was mainly made for facilitate updates when vrcx is updated !
 <div align="center">
 
 # <img src="https://raw.githubusercontent.com/vrcx-team/VRCX/master/VRCX.ico" width="64" height="64"> </img> VRCX
