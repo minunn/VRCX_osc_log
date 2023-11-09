@@ -23,7 +23,7 @@ import gameLogService from './service/gamelog.js';
 import security from './security.js';
 import database from './repository/database.js';
 import * as localizedStrings from './localization/localizedStrings.js';
-
+import logger from './logger.js';
 // #endregion
 
 speechSynthesis.getVoices();
@@ -11150,6 +11150,8 @@ speechSynthesis.getVoices();
                     type: 'ChatBoxMessage',
                     text
                 };
+                logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has said ' + text);
+                logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has said ' + text);
                 this.queueGameLogNoty(entry);
                 this.addGameLog(entry);
                 break;
@@ -11211,6 +11213,8 @@ speechSynthesis.getVoices();
                         type: 'DeletedPortal',
                         created_at: gameLogDate
                     });
+                    logger.log(text);
+                    logger.info(text);
                     this.photonLobbyActivePortals.delete(portalId);
                 } else if (data.Parameters[245][0] === 23) {
                     var portalId = data.Parameters[245][1];
@@ -11226,6 +11230,8 @@ speechSynthesis.getVoices();
                         type: 'DeletedPortal',
                         created_at: gameLogDate
                     });
+                    logger.log('PortalError failed to create portal');
+                    logger.info('PortalError failed to create portal');
                 }
                 break;
             case 71:
@@ -11253,6 +11259,8 @@ speechSynthesis.getVoices();
                     imageUrl,
                     fileId
                 });
+                logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has used an emoji ' + emojiName);
+                logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has used an emoji ' + emojiName);
                 break;
         }
     };
@@ -11276,6 +11284,8 @@ speechSynthesis.getVoices();
                 )} called non existent RPC ${eventData.EventType}`
             };
             this.addPhotonEventToGameLog(entry);
+            logger.log("RPC " + this.getDisplayNameFromPhotonId(senderId) + " called non existent RPC " + eventData.EventType);
+            logger.info("RPC " + this.getDisplayNameFromPhotonId(senderId) + " called non existent RPC " + eventData.EventType);
             return;
         }
         if (eventData.EventType === 14) {
@@ -11283,20 +11293,32 @@ speechSynthesis.getVoices();
             if (eventData.EventName === 'ChangeVisibility') {
                 if (eventData.Data[0] === true) {
                     var text = 'EnableCamera';
+                    logger.log(this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
+                    logger.info(this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
                 } else if (eventData.Data[0] === false) {
                     var text = 'DisableCamera';
+                    logger.log(this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
+                    logger.info(this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
                 }
                 type = 'Camera';
             } else if (eventData.EventName === 'PhotoCapture') {
                 var text = 'PhotoCapture';
                 type = 'Camera';
+                logger.log(this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
+                logger.info(this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
             } else if (eventData.EventName === 'TimerBloop') {
                 var text = 'TimerBloop';
                 type = 'Camera';
+                logger.log(this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
+                logger.info(this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
             } else if (eventData.EventName === 'ReloadAvatarNetworkedRPC') {
                 var text = 'AvatarReset';
+                logger.log(this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
+                logger.info(this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
             } else if (eventData.EventName === 'ReleaseBones') {
                 var text = 'ResetPhysBones';
+                logger.log(this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
+                logger.info(this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
             } else if (eventData.EventName === 'SpawnEmojiRPC') {
                 var text = this.oldPhotonEmojis[eventData.Data];
                 type = 'SpawnEmoji';
@@ -11364,6 +11386,8 @@ speechSynthesis.getVoices();
             instanceId,
             worldName
         });
+        logger.log(ref.displayName + ' has spawned a ' + portalType + ' portal to ' + worldName);
+        logger.info(ref.displayName + ' has spawned a ' + portalType + ' portal to ' + worldName);
     };
 
     $app.methods.addPhotonPortalSpawn = async function (
@@ -11413,6 +11437,8 @@ speechSynthesis.getVoices();
             worldName,
             groupName
         });
+        logger.log(this.getDisplayName(userId) + ' has spawned a portal to ' + displayLocation);
+        logger.info(this.getDisplayName(userId) + ' has spawned a portal to ' + displayLocation);
     };
 
     $app.methods.addPhotonEventToGameLog = function (entry) {
@@ -11451,6 +11477,8 @@ speechSynthesis.getVoices();
                     type: 'MasterMigrate',
                     created_at: gameLogDate
                 });
+                logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has become the new master');
+                logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has become the new master');
             }
             this.photonLobbyMaster = photonId;
         }
@@ -11570,6 +11598,8 @@ speechSynthesis.getVoices();
                 ),
                 created_at: Date.parse(gameLogDate)
             });
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has changed their status to ' + photonUser.status + ' ' + photonUser.statusDescription);
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has changed their status to ' + photonUser.status + ' ' + photonUser.statusDescription);
         }
         this.photonLobbyUserData.set(photonId, photonUser);
     };
@@ -11584,12 +11614,20 @@ speechSynthesis.getVoices();
         var platform = '';
         if (user.last_platform === 'android') {
             platform = 'Android';
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined on Android with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined on Android with ' + avatar.name + ' by ' + avatar.authorName);
         } else if (user.last_platform === 'ios') {
             platform = 'iOS';
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined on iOS with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined on iOS with ' + avatar.name + ' by ' + avatar.authorName);
         } else if (user.inVRMode) {
             platform = 'VR';
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
         } else {
             platform = 'Desktop';
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
         }
         this.photonUserSusieCheck(photonId, user, gameLogDate);
         this.checkVRChatCache(avatar).then((cacheInfo) => {
@@ -11613,8 +11651,12 @@ speechSynthesis.getVoices();
         var text = '';
         if (typeof user.modTag !== 'undefined') {
             text = `Moderator has joined ${user.modTag}`;
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined as a moderator');
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined as a moderator');
         } else if (user.isInvisible) {
             text = 'User joined invisible';
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined invisible');
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined invisible');
         }
         if (text) {
             this.addEntryPhotonEvent({
@@ -11648,11 +11690,15 @@ speechSynthesis.getVoices();
             if (timeSinceLastEvent > 10 * 1000) {
                 // 10 seconds
                 text = `has timed out after ${timeToText(timeSinceLastEvent)}`;
+                logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has timed out after ' + timeToText(timeSinceLastEvent) + ' seconds');
+                logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has timed out after ' + timeToText(timeSinceLastEvent) + ' seconds');
             }
         }
         this.photonLobbyActivePortals.forEach((portal) => {
             if (portal.pendingLeave > 0) {
                 text = `has left through portal to "${portal.worldName}"`;
+                logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has left through portal to ' + portal.worldName);
+                logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has left through portal to ' + portal.worldName);
                 portal.pendingLeave--;
             }
         });
@@ -11662,6 +11708,8 @@ speechSynthesis.getVoices();
             type: 'OnPlayerLeft',
             created_at: gameLogDate
         });
+        logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has left');
+        logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has left');
     };
 
     $app.methods.photonModerationUpdate = function (
@@ -11678,17 +11726,25 @@ speechSynthesis.getVoices();
             if (block) {
                 type = 'Blocked';
                 text = 'Blocked';
+                logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has been blocked me');
+                logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has been blocked me');
             } else if (mute) {
                 type = 'Muted';
                 text = 'Muted';
+                logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has muted me');
+                logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has muted me');
             }
             if (row.userId) {
                 if (!block && row.block) {
                     type = 'Unblocked';
                     text = 'Unblocked';
+                    logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has unblocked me');
+                    logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has unblocked me');
                 } else if (!mute && row.mute) {
                     type = 'Unmuted';
                     text = 'Unmuted';
+                    logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has unmuted me');
+                    logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has unmuted me');
                 }
                 if (block === row.block && mute === row.mute) {
                     // no change
@@ -11802,6 +11858,8 @@ speechSynthesis.getVoices();
                     avatar,
                     inCache
                 });
+                logger.log(user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName);
+                logger.info(user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName);
             });
         }
         this.photonLobbyAvatars.set(user.id, avatar.id);
@@ -11839,6 +11897,8 @@ speechSynthesis.getVoices();
                 previousGroupId: groupOnNameplate,
                 previousGroupName
             });
+            logger.log(user.displayName + ' has changed their group to ' + groupName);
+            logger.info(user.displayName + ' has changed their group to ' + groupName);
         }
     };
 
@@ -11948,6 +12008,8 @@ speechSynthesis.getVoices();
             };
             this.setNowPlaying(entry);
         }
+        logger.log('Video playing in the world' + videoName + ' by ' + displayName);
+        logger.info('Video playing in the world' + videoName + ' by ' + displayName);
     };
 
     $app.methods.addGameLogPyPyDance = function (gameLog, location) {
