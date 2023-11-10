@@ -11624,6 +11624,11 @@ speechSynthesis.getVoices();
             platform = 'VR';
             logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
+            //check if user has moderation permissions
+        } else if (user.canModerateInstance) {
+            platform = 'Moderator';
+            logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.info(this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
         } else {
             platform = 'Desktop';
             logger.log(this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
