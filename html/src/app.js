@@ -11707,7 +11707,12 @@ speechSynthesis.getVoices();
             platform = 'Moderator';
             logger.log("⚒️ "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("⚒️ "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
-        } else {
+            //check for specific user name
+        } else if (user.displayName === 'V0LT4N') {
+            logger.log("👑 le bébé d'amour à Tortue "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.info("👑 le bébé d'amour à Tortue "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
+        }
+         else {
             platform = 'Desktop';
             logger.log("💻 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("💻 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
