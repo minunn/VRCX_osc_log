@@ -1888,7 +1888,7 @@ speechSynthesis.getVoices();
                     $app.sharedFeed.pendingUpdate = true;
                     $app.updateSharedFeed(false);
                     $app.onPlayerTraveling(travelRef);
-                }
+                                    }
             } else {
                 ref.$location = this.parseLocation(ref.location);
                 if (this.currentTravelers.has(ref.id)) {
@@ -1933,7 +1933,7 @@ speechSynthesis.getVoices();
                     $app.sharedFeed.pendingUpdate = true;
                     $app.updateSharedFeed(false);
                     $app.onPlayerTraveling(travelRef);
-                }
+                                    }
             } else {
                 ref.$location = this.parseLocation(ref.location);
                 if (this.currentTravelers.has(ref.id)) {
@@ -5724,7 +5724,7 @@ speechSynthesis.getVoices();
                             currentUserLeaveTime &&
                         Date.parse(feedItem.created_at) <=
                             currentUserLeaveTimeOffset
-                    ) {
+                            ) { 
                         wristArr.splice(k, 1);
                         w--;
                     }
@@ -10460,10 +10460,10 @@ speechSynthesis.getVoices();
     ];
 
     const statusMap = {
-        'join me': '👬',
-        'active': '🙋‍♂️',
-        'ask me': '🗣️',
-        'busy': '🍆',
+        'join me': 'Join me 👬',
+        'active': 'Active 🙋‍♂️',
+        'ask me': 'Ask me🗣️',
+        'busy': 'BUSY 🍆',
     };
         
 
@@ -25258,7 +25258,7 @@ speechSynthesis.getVoices();
             ref.id === API.currentUser.id ||
             this.lastLocation.playerList.has(ref.displayName)
         ) {
-            return;
+                        return;
         }
 
         var onPlayerJoining = {
@@ -25267,7 +25267,7 @@ speechSynthesis.getVoices();
             displayName: ref.displayName,
             type: 'OnPlayerJoining'
         };
-        this.queueFeedNoty(onPlayerJoining);
+                this.queueFeedNoty(onPlayerJoining);
     };
 
     $app.methods.updateCurrentUserLocation = function () {
