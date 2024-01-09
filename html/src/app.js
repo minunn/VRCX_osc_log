@@ -643,8 +643,8 @@ speechSynthesis.getVoices();
             options.N > 0
                 ? options.N > options.params.offset
                 : options.N < 0
-                ? args.json.length
-                : options.params.n === args.json.length)
+                  ? args.json.length
+                  : options.params.n === args.json.length)
         ) {
             this.bulk(options);
         } else if ('done' in options) {
@@ -1416,7 +1416,6 @@ speechSynthesis.getVoices();
 
     API.logout = function () {
         this.$emit('LOGOUT');
-        webApiService.clearCookies();
         // return this.call('logout', {
         //     method: 'PUT'
         // }).finally(() => {
@@ -2681,6 +2680,12 @@ speechSynthesis.getVoices();
                     userId: json.id
                 }
             });
+            if (json.location === 'traveling') {
+                this.getUser({
+                    userId: json.id
+                });
+                // console.log('Fetching traveling user', json.id);
+            } // ?? hmm
         }
     });
 
@@ -4679,7 +4684,7 @@ speechSynthesis.getVoices();
             }
             this.errorNoty = new Noty({
                 type: 'error',
-                text: `WebSocket Error: ${err}`
+                text: escapeTag(`WebSocket Error: ${err}`)
             }).show();
             return;
         }
@@ -7542,7 +7547,7 @@ speechSynthesis.getVoices();
                                             .loginParmas.username,
                                     password: pt
                                 };
-                                this.updateStoredUser(
+                                await this.updateStoredUser(
                                     this.loginForm.savedCredentials[userId].user
                                 );
                                 await configRepository.setBool(
@@ -7749,10 +7754,20 @@ speechSynthesis.getVoices();
                 this.logout();
             } else {
                 $app.relogin(user).then(() => {
-                    new Noty({
-                        type: 'success',
-                        text: 'Automatically logged in.'
-                    }).show();
+                    if (this.errorNoty) {
+                        this.errorNoty.close();
+                    }
+                    if (!navigator.onLine) {
+                        this.errorNoty = new Noty({
+                            type: 'error',
+                            text: 'You are offline.'
+                        }).show();
+                    } else {
+                        this.errorNoty = new Noty({
+                            type: 'success',
+                            text: 'Automatically logged in.'
+                        }).show();
+                    }
                 });
             }
         }
@@ -12842,15 +12857,14 @@ speechSynthesis.getVoices();
                 appId = '939473404808007731';
                 bigIcon = 'zuwa_zuwa_dance';
             } else if (
-                L.worldId === 'wrld_1b68f7a8-8aea-4900-b7a2-3fc4139ac817' ||
+                L.worldId === 'wrld_74970324-58e8-4239-a17b-2c59dfdf00db' ||
                 L.worldId === 'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445' ||
                 L.worldId === 'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e'
             ) {
                 appId = '968292722391785512';
                 bigIcon = 'ls_media';
             } else if (
-                L.worldId === 'wrld_791ebf58-54ce-4d3a-a0a0-39f10e1b20b2' ||
-                L.worldId === 'wrld_86a09fce-a34e-4deb-81be-53c843f97e98'
+                L.worldId === 'wrld_266523e8-9161-40da-acd0-6bd82e075833'
             ) {
                 appId = '1095440531821170820';
                 bigIcon = 'movie_and_chill';
@@ -14823,14 +14837,10 @@ speechSynthesis.getVoices();
         'VRCX_StartAtWindowsStartup',
         false
     );
-    $app.data.isStartAsMinimizedState = false;
-    $app.data.isCloseToTray = false;
-    VRCXStorage.Get('VRCX_StartAsMinimizedState').then((result) => {
-        $app.isStartAsMinimizedState = result === 'true';
-    });
-    VRCXStorage.Get('VRCX_CloseToTray').then((result) => {
-        $app.isCloseToTray = result === 'true';
-    });
+    $app.data.isStartAsMinimizedState =
+        (await VRCXStorage.Get('VRCX_StartAsMinimizedState')) === 'true';
+    $app.data.isCloseToTray =
+        (await VRCXStorage.Get('VRCX_CloseToTray')) === 'true';
     if (await configRepository.getBool('VRCX_CloseToTray')) {
         // move back to JSON
         $app.data.isCloseToTray =
@@ -14838,6 +14848,8 @@ speechSynthesis.getVoices();
         VRCXStorage.Set('VRCX_CloseToTray', $app.data.isCloseToTray.toString());
         await configRepository.remove('VRCX_CloseToTray');
     }
+    $app.data.disableWorldDatabase =
+        (await VRCXStorage.Get('VRCX_DisableWorldDatabase')) === 'true';
     $app.methods.saveVRCXWindowOption = async function () {
         await configRepository.setBool(
             'VRCX_StartAtWindowsStartup',
@@ -14848,6 +14860,10 @@ speechSynthesis.getVoices();
             this.isStartAsMinimizedState.toString()
         );
         VRCXStorage.Set('VRCX_CloseToTray', this.isCloseToTray.toString());
+        VRCXStorage.Set(
+            'VRCX_DisableWorldDatabase',
+            this.disableWorldDatabase.toString()
+        );
         AppApi.SetStartup(this.isStartAtWindowsStartup);
     };
     $app.data.photonEventOverlay = await configRepository.getBool(
@@ -15039,7 +15055,7 @@ speechSynthesis.getVoices();
     };
 
     // setting defaults
-    var sharedFeedFilters = {
+    $app.data.sharedFeedFiltersDefaults = {
         noty: {
             Location: 'Off',
             OnPlayerJoined: 'VIP',
@@ -15117,12 +15133,15 @@ speechSynthesis.getVoices();
             Unmuted: 'On'
         }
     };
-    $app.data.sharedFeedFilters = JSON.parse(
-        await configRepository.getString(
-            'sharedFeedFilters',
-            JSON.stringify(sharedFeedFilters)
-        )
-    );
+    $app.data.sharedFeedFilters = $app.data.sharedFeedFiltersDefaults;
+    if (await configRepository.getString('sharedFeedFilters')) {
+        $app.data.sharedFeedFilters = JSON.parse(
+            await configRepository.getString(
+                'sharedFeedFilters',
+                JSON.stringify($app.data.sharedFeedFiltersDefaults)
+            )
+        );
+    }
     if (!$app.data.sharedFeedFilters.noty.Blocked) {
         $app.data.sharedFeedFilters.noty.Blocked = 'Off';
         $app.data.sharedFeedFilters.noty.Unblocked = 'Off';
@@ -15236,9 +15255,16 @@ speechSynthesis.getVoices();
     $app.methods.cancelSharedFeedFilters = async function () {
         this.notyFeedFiltersDialog.visible = false;
         this.wristFeedFiltersDialog.visible = false;
-        this.sharedFeedFilters = JSON.parse(
-            await configRepository.getString('sharedFeedFilters')
-        );
+        if (await configRepository.getString('sharedFeedFilters')) {
+            this.sharedFeedFilters = JSON.parse(
+                await configRepository.getString(
+                    'sharedFeedFilters',
+                    JSON.stringify(this.sharedFeedFiltersDefaults)
+                )
+            );
+        } else {
+            this.sharedFeedFilters = this.sharedFeedFiltersDefaults;
+        }
     };
 
     $app.data.notificationPosition = await configRepository.getString(
@@ -15327,13 +15353,12 @@ speechSynthesis.getVoices();
             'wrld_dd6d2888-dbdc-47c2-bc98-3d631b2acd7c',
             'wrld_52bdcdab-11cd-4325-9655-0fb120846945',
             'wrld_2d40da63-8f1f-4011-8a9e-414eb8530acd',
-            'wrld_1b68f7a8-8aea-4900-b7a2-3fc4139ac817',
             'wrld_10e5e467-fc65-42ed-8957-f02cace1398c',
             'wrld_04899f23-e182-4a8d-b2c7-2c74c7c15534',
-            'wrld_791ebf58-54ce-4d3a-a0a0-39f10e1b20b2',
-            'wrld_86a09fce-a34e-4deb-81be-53c843f97e98',
             'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e',
-            'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445'
+            'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445',
+            'wrld_74970324-58e8-4239-a17b-2c59dfdf00db',
+            'wrld_266523e8-9161-40da-acd0-6bd82e075833'
         ];
         var L = API.parseLocation(location);
         if (rpcWorlds.includes(L.worldId)) {
@@ -16789,6 +16814,16 @@ speechSynthesis.getVoices();
                                 D.isShowAvatar = true;
                             }
                         });
+                    } else {
+                        database
+                            .getUserStats(D.ref, inCurrentWorld)
+                            .then((ref1) => {
+                                if (ref1.userId === D.id) {
+                                    D.lastSeen = ref1.created_at;
+                                    D.joinCount = ref1.joinCount;
+                                    D.timeSpent = ref1.timeSpent;
+                                }
+                            });
                     }
                     API.getRepresentedGroup({ userId }).then((args1) => {
                         D.representedGroup = args1.json;
@@ -18550,6 +18585,9 @@ speechSynthesis.getVoices();
         isBlocked: false,
         isQuestFallback: false,
         hasImposter: false,
+        isPC: false,
+        isQuest: false,
+        isIos: false,
         treeData: [],
         fileSize: '',
         inCache: false,
@@ -18608,6 +18646,9 @@ speechSynthesis.getVoices();
         D.cacheLocked = false;
         D.cachePath = '';
         D.isQuestFallback = false;
+        D.isPC = false;
+        D.isQuest = false;
+        D.isIos = false;
         D.hasImposter = false;
         D.isFavorite = API.cachedFavoritesByObjectId.has(avatarId);
         D.isBlocked = API.cachedAvatarModerations.has(avatarId);
@@ -18639,6 +18680,12 @@ speechSynthesis.getVoices();
                 if (/quest/.test(ref.tags)) {
                     D.isQuestFallback = true;
                 }
+                var { isPC, isQuest, isIos } = this.getAvailablePlatforms(
+                    args.ref.unityPackages
+                );
+                D.isPC = isPC;
+                D.isQuest = isQuest;
+                D.isIos = isIos;
                 var assetUrl = '';
                 for (let i = ref.unityPackages.length - 1; i > -1; i--) {
                     var unityPackage = ref.unityPackages[i];
@@ -19656,14 +19703,25 @@ speechSynthesis.getVoices();
         $app.launchOptionsDialog.visible = false;
     });
 
-    $app.methods.updateLaunchOptions = async function () {
+    $app.methods.updateLaunchOptions = function () {
         var D = this.launchOptionsDialog;
-        D.visible = false;
         D.launchArguments = String(D.launchArguments)
             .replace(/\s+/g, ' ')
             .trim();
-        await configRepository.setString('launchArguments', D.launchArguments);
-        await configRepository.setString(
+        configRepository.setString('launchArguments', D.launchArguments);
+        if (
+            D.vrcLaunchPathOverride &&
+            D.vrcLaunchPathOverride.endsWith('.exe') &&
+            !D.vrcLaunchPathOverride.endsWith('launch.exe')
+        ) {
+            this.$message({
+                message:
+                    'Invalid path, you must enter VRChat folder or launch.exe',
+                type: 'error'
+            });
+            return;
+        }
+        configRepository.setString(
             'vrcLaunchPathOverride',
             D.vrcLaunchPathOverride
         );
@@ -19671,6 +19729,7 @@ speechSynthesis.getVoices();
             message: 'Updated launch options',
             type: 'success'
         });
+        D.visible = false;
     };
 
     $app.methods.showLaunchOptions = function () {
@@ -20216,10 +20275,19 @@ speechSynthesis.getVoices();
                 }
             });
         } else {
-            AppApi.StartGame(args.join(' '));
-            this.$message({
-                message: 'VRChat launched',
-                type: 'success'
+            AppApi.StartGame(args.join(' ')).then((result) => {
+                if (!result) {
+                    this.$message({
+                        message:
+                            'Failed to find VRChat, set a custom path in launch options',
+                        type: 'error'
+                    });
+                } else {
+                    this.$message({
+                        message: 'VRChat launched',
+                        type: 'success'
+                    });
+                }
             });
         }
         console.log('Launch Game', args.join(' '), desktopMode);
@@ -24996,7 +25064,7 @@ speechSynthesis.getVoices();
         data: [],
         filters: [
             {
-                prop: 'name',
+                prop: 'worldName',
                 value: ''
             }
         ],
@@ -25096,7 +25164,7 @@ speechSynthesis.getVoices();
         data: [],
         filters: [
             {
-                prop: 'name',
+                prop: 'groupName',
                 value: ''
             }
         ],
