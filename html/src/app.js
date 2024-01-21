@@ -11717,6 +11717,23 @@ speechSynthesis.getVoices();
             const status = statusMap[photonUser.status];
             logger.log("✍️ "+this.getDisplayNameFromPhotonId(photonId) + ' has changed their status to ' + status + ' ' + photonUser.statusDescription);
             logger.info("✍️ "+this.getDisplayNameFromPhotonId(photonId) + ' has changed their status to ' + status + ' ' + photonUser.statusDescription);
+       
+       //if user has 10 fps for more than 3 min
+       var lastEvent = this.photonEvent7List.get(parseInt(photonId, 10));
+         if (typeof lastEvent !== 'undefined') {
+            var timeSinceLastEvent = Date.now() - Date.parse(lastEvent);
+            if (timeSinceLastEvent > 180000) {
+                this.addEntryPhotonEvent({
+                    photonId,
+                    text: 'has not sent any events for 3 min he is a BOT USER !',
+                    type: 'Event',
+                    color: 'red',
+                    created_at: gameLogDate
+                });
+                logger.log("🚨 "+this.getDisplayNameFromPhotonId(photonId) + ' has not sent any events for more than 3 min he is probably a bot !');
+                logger.info("🚨 "+this.getDisplayNameFromPhotonId(photonId) + ' has not sent any events for more than 3 min he is probably a bot !');
+                }
+            }
         }
         this.photonLobbyUserData.set(photonId, photonUser);
     };
@@ -12677,25 +12694,25 @@ speechSynthesis.getVoices();
                 switch (L.accessType) {
                     case 'public':
                         L.joinUrl = this.getLaunchURL(L);
-                        L.accessName = `Public #${L.instanceName} (${platform})`;
+                        L.accessName = `In Public #${L.instanceName} (${platform}) (${L.worldCapacity}) drinking water`;
                         break;
                     case 'invite+':
-                        L.accessName = `Invite+ #${L.instanceName} (${platform})`;
+                        L.accessName = `In Invite+ #${L.instanceName} (${platform}) (${L.worldCapacity}) drinking water`;
                         break;
                     case 'invite':
-                        L.accessName = `Invite #${L.instanceName} (${platform})`;
+                        L.accessName = `In Invite #${L.instanceName} (${platform}) (${L.worldCapacity}) drinking water`;
                         break;
                     case 'friends':
-                        L.accessName = `Friends #${L.instanceName} (${platform})`;
+                        L.accessName = `Friends #${L.instanceName} (${platform}) (${L.worldCapacity}) drinking water`;
                         break;
                     case 'friends+':
-                        L.accessName = `Friends+ #${L.instanceName} (${platform})`;
+                        L.accessName = `Friends+ #${L.instanceName} (${platform}) (${L.worldCapacity}) drinking water`;
                         break;
                     case 'group':
-                        L.accessName = `Group #${L.instanceName} (${platform})`;
+                        L.accessName = `Group${groupAccessType} #${L.instanceName} (${platform}) (${L.worldCapacity}) drinking water`;
                         this.getGroupName(L.groupId).then((groupName) => {
                             if (groupName) {
-                                L.accessName = `Group${groupAccessType}(${groupName}) #${L.instanceName} (${platform})`;
+                                L.accessName = `Group${groupAccessType} #${L.instanceName} (${platform}) (${L.worldCapacity}) drinking water`;
                             }
                         });
                         break;
@@ -12713,22 +12730,22 @@ speechSynthesis.getVoices();
         }
         switch (API.currentUser.status) {
             case 'active':
-                L.statusName = 'Online';
+                L.statusName = 'Online - Drinking Water in public';
                 L.statusImage = 'active';
                 break;
             case 'join me':
-                L.statusName = 'Join Me';
+                L.statusName = 'Join Me - Drinking Water in public';
                 L.statusImage = 'joinme';
                 break;
             case 'ask me':
-                L.statusName = 'Ask Me';
+                L.statusName = 'Ask Me - Drinking Water with Friends';
                 L.statusImage = 'askme';
                 if (this.discordHideInvite) {
                     hidePrivate = true;
                 }
                 break;
             case 'busy':
-                L.statusName = 'Do Not Disturb';
+                L.statusName = 'ERP - Do Not Disturb - Drinking special Water';
                 L.statusImage = 'busy';
                 hidePrivate = true;
                 break;
@@ -12759,38 +12776,6 @@ speechSynthesis.getVoices();
             buttonUrl = '';
         } else if (this.isRpcWorld(L.tag)) {
             // custom world rpc
-            if (
-                L.worldId === 'wrld_f20326da-f1ac-45fc-a062-609723b097b1' ||
-                L.worldId === 'wrld_10e5e467-fc65-42ed-8957-f02cace1398c'
-            ) {
-                appId = '784094509008551956';
-                bigIcon = 'pypy';
-            } else if (
-                L.worldId === 'wrld_42377cf1-c54f-45ed-8996-5875b0573a83' ||
-                L.worldId === 'wrld_dd6d2888-dbdc-47c2-bc98-3d631b2acd7c'
-            ) {
-                appId = '846232616054030376';
-                bigIcon = 'vr_dancing';
-            } else if (
-                L.worldId === 'wrld_52bdcdab-11cd-4325-9655-0fb120846945' ||
-                L.worldId === 'wrld_2d40da63-8f1f-4011-8a9e-414eb8530acd'
-            ) {
-                appId = '939473404808007731';
-                bigIcon = 'zuwa_zuwa_dance';
-            } else if (
-                L.worldId === 'wrld_1b68f7a8-8aea-4900-b7a2-3fc4139ac817' ||
-                L.worldId === 'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445' ||
-                L.worldId === 'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e'
-            ) {
-                appId = '968292722391785512';
-                bigIcon = 'ls_media';
-            } else if (
-                L.worldId === 'wrld_791ebf58-54ce-4d3a-a0a0-39f10e1b20b2' ||
-                L.worldId === 'wrld_86a09fce-a34e-4deb-81be-53c843f97e98'
-            ) {
-                appId = '1095440531821170820';
-                bigIcon = 'movie_and_chill';
-            }
             if (this.nowPlaying.name) {
                 L.worldName = this.nowPlaying.name;
             }
@@ -12808,7 +12793,7 @@ speechSynthesis.getVoices();
         }
         Discord.SetAssets(
             bigIcon, // big icon
-            'Powered by VRCX', // big icon hover text
+            'I drink water !', // big icon hover text
             L.statusImage, // small icon
             L.statusName, // small icon hover text
             partyId, // party id
