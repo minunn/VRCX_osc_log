@@ -141,6 +141,8 @@
                 "two_factor": "Two-Factor Auth (2FA)",
                 "two_factor_enabled": "Enabled",
                 "two_factor_disabled": "Disabled",
+                "v_bucks": "V-Bucks",
+                "refresh": "Click to refresh",
                 "logout": "Logout",
                 "manage_gallery_icon": "Manage Photos/Icons/Emojis",
                 "export_friend_list": "Export Friends List",
@@ -206,7 +208,7 @@
                 },
                 "application": {
                     "header": "Application",
-                    "startup": "Start as Windows startup",
+                    "startup": "Start at Windows startup",
                     "minimized": "Start as minimized state",
                     "tray": "Close to tray"
                 },
@@ -323,7 +325,7 @@
                         "when_to_display_game_closed": "Game Closed",
                         "when_to_display_game_running": "Game Running",
                         "when_to_display_always": "Always",
-                        "desktop_notification_while_afk": "Desktop Notification While AFK"
+                        "desktop_notification_while_afk": "Desktop Notifications While AFK"
                     },
                     "text_to_speech": {
                         "header": "Text-To-Speech Options",
@@ -403,6 +405,10 @@
                         "header": "Automatically Manage Cache When Closing VRChat",
                         "description": "Auto delete old versions from cache"
                     },
+                    "disable_local_world_persistence": {
+                        "header": "Disable Local World Persistence",
+                        "description": "Disable localhost webserver (requires restart)"
+                    },
                     "remote_database": {
                         "header": "Remote Avatar Database",
                         "enable": "Enable",
@@ -425,7 +431,8 @@
                         "description_tooltip": "Unfortunately, windows doesn't support viewing PNG text chunks(few things do) natively, but you can view it using a command-line tool like exiftool, a png chunk inspector, or a hex editor.",
                         "enable": "Enable",
                         "modify_filename": "Modify Filename",
-                        "modify_filename_tooltip": "Will add the World ID to screenshot filename, in addition to file metadata."
+                        "modify_filename_tooltip": "Will add the World ID to screenshot filename, in addition to file metadata.",
+                        "copy_to_clipboard": "Copy to Clipboard"
                     },
                     "app_launcher": {
                         "header": "App Launcher",
@@ -581,6 +588,7 @@
                 "last_seen": "Last Seen",
                 "join_count": "Join Count",
                 "time_together": "Time Together",
+                "play_time": "Play Time",
                 "online_for": "Online For",
                 "offline_for": "Offline For",
                 "last_activity": "Last Activity",
@@ -591,7 +599,7 @@
                 "avatar_cloning": "Avatar Cloning",
                 "avatar_cloning_allow": "Allowed",
                 "avatar_cloning_deny": "Deny",
-                "home_location": "Home Location",
+                "home_location": "Home World",
                 "id": "User ID",
                 "id_tooltip": "Copy to clipboard",
                 "copy_id": "Copy ID",
@@ -753,7 +761,9 @@
                 "change_content_tags": "Change Content Tags",
                 "change_image": "Change Image",
                 "download_package": "Download Unity Package",
-                "delete": "Delete"
+                "delete": "Delete",
+                "delete_impostor": "Delete Impostor",
+                "create_impostor": "Create Impostor"
             },
             "info": {
                 "header": "Info",
@@ -1050,8 +1060,8 @@
             "favorite": "Favorites",
             "friends": "Friends",
             "everyone": "Everyone",
-            "cancel": "Cancel",
-            "save": "Save"
+            "reset": "Reset",
+            "close": "Close"
         },
         "world_export": {
             "header": "World Favorites Export"
@@ -1250,7 +1260,7 @@
             "date": "Date",
             "action": "Action",
             "auto_backup": "Weekly Auto Backup",
-            "restore_prompt": "VRCX has noticed auto backup of VRC registry settings is enabled but this computer dosn't have any, if you'd like to restore from backup you can do so from here."
+            "restore_prompt": "VRCX has noticed auto backup of VRC registry settings is enabled but this computer doesn't have any, if you'd like to restore from backup you can do so from here."
         },
         "group_member_moderation": {
             "header": "Group Member Moderation",

@@ -407,6 +407,14 @@ html
                                                     i.el-icon-warning
                                             span.extra(v-if="userDialog.timeSpent === 0") -
                                             span.extra(v-else) {{ userDialog.timeSpent | timeToText }}
+                                template(v-else)
+                                    .x-friend-item(@click="showPreviousInstancesUserDialog(userDialog.ref)")
+                                        .detail
+                                            span.name {{ $t('dialog.user.info.play_time') }}
+                                                el-tooltip(v-if="!hideTooltips" placement="top" style="margin-left:5px" :content="$t('dialog.user.info.accuracy_notice')")
+                                                    i.el-icon-warning
+                                            span.extra(v-if="userDialog.timeSpent === 0") -
+                                            span.extra(v-else) {{ userDialog.timeSpent | timeToText }}
                                 .x-friend-item(style="cursor:default")
                                     el-tooltip(placement="top")
                                         template(#content)
@@ -702,7 +710,7 @@ html
                                         span.name {{ $t('dialog.world.info.memo') }}
                                         el-input.extra(v-model="worldDialog.memo" type="textarea" :rows="2" :autosize="{ minRows: 1, maxRows: 20 }" :placeholder="$t('dialog.world.info.memo_placeholder')" size="mini" resize="none")
                                 div(style="width:100%;display:flex")
-                                    .x-friend-item(style="width:350px;cursor:default")
+                                    .x-friend-item(style="width:100%;cursor:default")
                                         .detail
                                             span.name {{ $t('dialog.world.info.id') }}
                                             span.extra {{ worldDialog.id }}
@@ -720,7 +728,7 @@ html
                                 .x-friend-item(style="width:100%;cursor:default")
                                     .detail
                                         span.name {{ $t('dialog.world.info.author_tags') }}
-                                        span.extra(v-if="worldDialog.ref.tags?.length > 0") {{ worldDialog.ref.tags.filter(tag => tag.startsWith('author_tag')).map(tag => tag.replace('author_tag_', '')).join(', ') }}
+                                        span.extra(v-if="worldDialog.ref.tags?.filter(tag => tag.startsWith('author_tag')).length > 0") {{ worldDialog.ref.tags.filter(tag => tag.startsWith('author_tag')).map(tag => tag.replace('author_tag_', '')).join(', ') }}
                                         span.extra(v-else) -
                                 .x-friend-item(style="cursor:default")
                                     .detail
@@ -816,14 +824,17 @@ html
                                     span.dialog-title(v-text="avatarDialog.ref.name")
                                 div(style="margin-top:5px")
                                     span.x-link(v-text="avatarDialog.ref.authorName" @click="showUserDialog(avatarDialog.ref.authorId)" style="color:#909399;font-family:monospace")
-                                div(style="margin-top:5px")
-                                    el-tag(v-if="avatarDialog.ref.releaseStatus === 'public'" type="success" effect="plain" size="mini" style="margin-right:5px") {{ $t('dialog.avatar.tags.public') }}
-                                    el-tag(v-else type="danger" effect="plain" size="mini" style="margin-right:5px") {{ $t('dialog.avatar.tags.private') }}
-                                    el-tag(v-if="avatarDialog.isQuestFallback" type="info" effect="plain" size="mini" style="margin-right:5px") {{ $t('dialog.avatar.tags.fallback') }}
-                                    el-tag(v-if="avatarDialog.hasImposter" type="info" effect="plain" size="mini" style="margin-right:5px") {{ $t('dialog.avatar.tags.impostor') }}
-                                    el-tag(v-if="avatarDialog.ref.unityPackageUrl" type="success" effect="plain" size="mini" style="margin-right:5px") {{ $t('dialog.avatar.tags.future_proofing') }}
-                                    el-tag(v-if="avatarDialog.fileSize" type="info" effect="plain" size="mini" v-text="avatarDialog.fileSize" style="margin-right:5px")
-                                    el-tag.x-link(v-if="avatarDialog.inCache" type="info" effect="plain" size="mini" @click="openFolderGeneric(avatarDialog.cachePath)")
+                                div
+                                    el-tag(v-if="avatarDialog.ref.releaseStatus === 'public'" type="success" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") {{ $t('dialog.avatar.tags.public') }}
+                                    el-tag(v-else type="danger" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") {{ $t('dialog.avatar.tags.private') }}
+                                    el-tag.x-tag-platform-pc(v-if="avatarDialog.isPC" type="info" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") PC
+                                    el-tag.x-tag-platform-quest(v-if="avatarDialog.isQuest" type="info" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") Android
+                                    el-tag.x-tag-platform-ios(v-if="avatarDialog.isIos" type="info" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") iOS
+                                    el-tag(v-if="avatarDialog.isQuestFallback" type="info" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") {{ $t('dialog.avatar.tags.fallback') }}
+                                    el-tag(v-if="avatarDialog.hasImposter" type="info" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") {{ $t('dialog.avatar.tags.impostor') }}
+                                    el-tag(v-if="avatarDialog.ref.unityPackageUrl" type="success" effect="plain" size="mini" style="margin-right:5px;margin-top:5px") {{ $t('dialog.avatar.tags.future_proofing') }}
+                                    el-tag(v-if="avatarDialog.fileSize" type="info" effect="plain" size="mini" v-text="avatarDialog.fileSize" style="margin-right:5px;margin-top:5px")
+                                    el-tag.x-link(v-if="avatarDialog.inCache" type="info" effect="plain" size="mini" @click="openFolderGeneric(avatarDialog.cachePath)" style="margin-right:5px;margin-top:5px")
                                         span(v-text="avatarDialog.cacheSize")
                                         |  {{ $t('dialog.avatar.tags.cache') }}
                                     div
@@ -858,7 +869,9 @@ html
                                             el-dropdown-item(icon="el-icon-edit" command="Change Content Tags") {{ $t('dialog.avatar.actions.change_content_tags') }}
                                             el-dropdown-item(icon="el-icon-picture-outline" command="Change Image") {{ $t('dialog.avatar.actions.change_image') }}
                                             el-dropdown-item(v-if="avatarDialog.ref.unityPackageUrl" icon="el-icon-download" command="Download Unity Package") {{ $t('dialog.avatar.actions.download_package') }}
-                                            el-dropdown-item(icon="el-icon-user" command="Delete" style="color:#F56C6C" divided) {{ $t('dialog.avatar.actions.delete') }}
+                                            el-dropdown-item(v-if="avatarDialog.hasImposter" icon="el-icon-delete" command="Delete Imposter" style="color:#F56C6C") {{ $t('dialog.avatar.actions.delete_impostor') }}
+                                            el-dropdown-item(v-else icon="el-icon-user" command="Create Imposter") {{ $t('dialog.avatar.actions.create_impostor') }}
+                                            el-dropdown-item(icon="el-icon-delete" command="Delete" style="color:#F56C6C" divided) {{ $t('dialog.avatar.actions.delete') }}
                     el-tabs
                         el-tab-pane(:label="$t('dialog.avatar.info.header')")
                             .x-friend-list
@@ -1481,7 +1494,7 @@ html
                         el-button(type="primary" size="small" @click="createGroupInstance()" :disabled="!newInstanceDialog.groupId") {{ $t('dialog.new_instance.create_instance') }}
 
             //- dialog: launch options
-            el-dialog.x-dialog(:before-close="beforeDialogClose" @mousedown.native="dialogMouseDown" @mouseup.native="dialogMouseUp" ref="launchOptionsDialog" :visible.sync="launchOptionsDialog.visible" :title="$t('dialog.launch_options.header')" width="500px")
+            el-dialog.x-dialog(:before-close="beforeDialogClose" @mousedown.native="dialogMouseDown" @mouseup.native="dialogMouseUp" ref="launchOptionsDialog" :visible.sync="launchOptionsDialog.visible" :title="$t('dialog.launch_options.header')" width="600px")
                 div(style="font-size:12px")
                     | {{ $t('dialog.launch_options.description') }} #[br]
                     | {{ $t('dialog.launch_options.example') }} #[el-tag(size="mini") --fps=144]
@@ -1677,7 +1690,7 @@ html
                         el-tooltip(placement="right" :content="$t('dialog.launch.copy_tooltip')" :disabled="hideTooltips")
                             el-button(@click="copyInstanceMessage(launchDialog.location)" size="mini" icon="el-icon-s-order" style="margin-right:5px" circle)
                 template(#footer)
-                    el-checkbox(v-model="launchDialog.desktop" style="float:left;margin-top:5px") {{ $t('dialog.launch.start_as_desktop') }}
+                    el-checkbox(v-model="launchDialog.desktop" @change="saveLaunchDialog" style="float:left;margin-top:5px") {{ $t('dialog.launch.start_as_desktop') }}
                     el-button(size="small" @click="showPreviousInstanceInfoDialog(launchDialog.location)") {{ $t('dialog.launch.info') }}
                     el-button(size="small" @click="showInviteDialog(launchDialog.location)" :disabled="!checkCanInvite(launchDialog.location)") {{ $t('dialog.launch.invite') }}
                     el-button(type="primary" size="small" @click="launchGame(launchDialog.location, launchDialog.shortName, launchDialog.desktop)" :disabled="!launchDialog.secureOrShortName") {{ $t('dialog.launch.launch') }}
@@ -1726,127 +1739,127 @@ html
                 .toggle-list
                     .toggle-item
                         span.toggle-name OnPlayerJoining
-                        el-radio-group(v-model="sharedFeedFilters.noty.OnPlayerJoining" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.OnPlayerJoining" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name OnPlayerJoined
-                        el-radio-group(v-model="sharedFeedFilters.noty.OnPlayerJoined" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.OnPlayerJoined" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name OnPlayerLeft
-                        el-radio-group(v-model="sharedFeedFilters.noty.OnPlayerLeft" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.OnPlayerLeft" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Online
-                        el-radio-group(v-model="sharedFeedFilters.noty.Online" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.Online" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Offline
-                        el-radio-group(v-model="sharedFeedFilters.noty.Offline" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.Offline" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name GPS
-                        el-radio-group(v-model="sharedFeedFilters.noty.GPS" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.GPS" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Status
-                        el-radio-group(v-model="sharedFeedFilters.noty.Status" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.Status" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Invite
-                        el-radio-group(v-model="sharedFeedFilters.noty.invite" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.invite" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Request Invite
-                        el-radio-group(v-model="sharedFeedFilters.noty.requestInvite" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.requestInvite" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Invite Response
-                        el-radio-group(v-model="sharedFeedFilters.noty.inviteResponse" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.inviteResponse" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Request Invite Response
-                        el-radio-group(v-model="sharedFeedFilters.noty.requestInviteResponse" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.requestInviteResponse" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Friend Request
-                        el-radio-group(v-model="sharedFeedFilters.noty.friendRequest" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.friendRequest" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name New Friend
-                        el-radio-group(v-model="sharedFeedFilters.noty.Friend" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.Friend" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Unfriend
-                        el-radio-group(v-model="sharedFeedFilters.noty.Unfriend" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.Unfriend" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Display Name
-                        el-radio-group(v-model="sharedFeedFilters.noty.DisplayName" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.DisplayName" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Trust Level
-                        el-radio-group(v-model="sharedFeedFilters.noty.TrustLevel" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.TrustLevel" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Group Announcement
-                        el-radio-group(v-model="sharedFeedFilters.noty['group.announcement']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty['group.announcement']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Group Join/Leave
-                        el-radio-group(v-model="sharedFeedFilters.noty['group.informative']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty['group.informative']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Group Invite
-                        el-radio-group(v-model="sharedFeedFilters.noty['group.invite']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty['group.invite']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Group Join Request
-                        el-radio-group(v-model="sharedFeedFilters.noty['group.joinRequest']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty['group.joinRequest']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Instance Queue Ready
-                        el-radio-group(v-model="sharedFeedFilters.noty['group.queueReady']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty['group.queueReady']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Portal Spawn
-                        el-radio-group(v-model="sharedFeedFilters.noty.PortalSpawn" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.PortalSpawn" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
@@ -1855,50 +1868,50 @@ html
                         span.toggle-name Video Play
                             el-tooltip(placement="top" style="margin-left:5px" content="Requires VRCX YouTube API option enabled")
                                 i.el-icon-warning
-                        el-radio-group(v-model="sharedFeedFilters.noty.VideoPlay" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.VideoPlay" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Events
-                        el-radio-group(v-model="sharedFeedFilters.noty.Event" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.Event" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name External
-                        el-radio-group(v-model="sharedFeedFilters.noty.External" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.External" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Blocked Player Joins
-                        el-radio-group(v-model="sharedFeedFilters.noty.BlockedOnPlayerJoined" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.BlockedOnPlayerJoined" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Blocked Player Leaves
-                        el-radio-group(v-model="sharedFeedFilters.noty.BlockedOnPlayerLeft" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.BlockedOnPlayerLeft" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Muted Player Joins
-                        el-radio-group(v-model="sharedFeedFilters.noty.MutedOnPlayerJoined" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.MutedOnPlayerJoined" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Muted Player Leaves
-                        el-radio-group(v-model="sharedFeedFilters.noty.MutedOnPlayerLeft" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.MutedOnPlayerLeft" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Lobby Avatar Change
-                        el-radio-group(v-model="sharedFeedFilters.noty.AvatarChange" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.noty.AvatarChange" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
@@ -1909,166 +1922,166 @@ html
                             span.toggle-name Photon Event Logging
                         .toggle-item
                             span.toggle-name Lobby ChatBox Message
-                            el-radio-group(v-model="sharedFeedFilters.noty.ChatBoxMessage" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.noty.ChatBoxMessage" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                                 el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                                 el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                         .toggle-item
                             span.toggle-name Blocked
-                            el-radio-group(v-model="sharedFeedFilters.noty.Blocked" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.noty.Blocked" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                         .toggle-item
                             span.toggle-name Unblocked
-                            el-radio-group(v-model="sharedFeedFilters.noty.Unblocked" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.noty.Unblocked" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                         .toggle-item
                             span.toggle-name Muted
-                            el-radio-group(v-model="sharedFeedFilters.noty.Muted" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.noty.Muted" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                         .toggle-item
                             span.toggle-name Unmuted
-                            el-radio-group(v-model="sharedFeedFilters.noty.Unmuted" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.noty.Unmuted" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                 template(#footer)
-                    el-button(type="small" @click="cancelSharedFeedFilters") {{ $t('dialog.shared_feed_filters.cancel') }}
-                    el-button(type="primary" size="small" style="margin-left:10px" @click="saveSharedFeedFilters") {{ $t('dialog.shared_feed_filters.save') }}
+                    el-button(type="small" @click="resetSharedFeedFilters") {{ $t('dialog.shared_feed_filters.reset') }}
+                    el-button(type="primary" size="small" style="margin-left:10px" @click="notyFeedFiltersDialog.visible = false") {{ $t('dialog.shared_feed_filters.close') }}
 
             //- dialog: wrist feed filters
             el-dialog.x-dialog(:before-close="beforeDialogClose" @mousedown.native="dialogMouseDown" @mouseup.native="dialogMouseUp" ref="wristFeedFiltersDialog" :visible.sync="wristFeedFiltersDialog.visible" :title="$t('dialog.shared_feed_filters.wrist')" width="550px")
                 .toggle-list
                     .toggle-item
                         span.toggle-name Self Location
-                        el-radio-group(v-model="sharedFeedFilters.wrist.Location" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.Location" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name OnPlayerJoining
-                        el-radio-group(v-model="sharedFeedFilters.wrist.OnPlayerJoining" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.OnPlayerJoining" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name OnPlayerJoined
-                        el-radio-group(v-model="sharedFeedFilters.wrist.OnPlayerJoined" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.OnPlayerJoined" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name OnPlayerLeft
-                        el-radio-group(v-model="sharedFeedFilters.wrist.OnPlayerLeft" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.OnPlayerLeft" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Online
-                        el-radio-group(v-model="sharedFeedFilters.wrist.Online" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.Online" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Offline
-                        el-radio-group(v-model="sharedFeedFilters.wrist.Offline" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.Offline" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name GPS
-                        el-radio-group(v-model="sharedFeedFilters.wrist.GPS" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.GPS" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Status
-                        el-radio-group(v-model="sharedFeedFilters.wrist.Status" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.Status" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Invite
-                        el-radio-group(v-model="sharedFeedFilters.wrist.invite" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.invite" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Request Invite
-                        el-radio-group(v-model="sharedFeedFilters.wrist.requestInvite" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.requestInvite" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Invite Response
-                        el-radio-group(v-model="sharedFeedFilters.wrist.inviteResponse" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.inviteResponse" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Request Invite Response
-                        el-radio-group(v-model="sharedFeedFilters.wrist.requestInviteResponse" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.requestInviteResponse" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Friend Request
-                        el-radio-group(v-model="sharedFeedFilters.wrist.friendRequest" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.friendRequest" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name New Friend
-                        el-radio-group(v-model="sharedFeedFilters.wrist.Friend" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.Friend" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Unfriend
-                        el-radio-group(v-model="sharedFeedFilters.wrist.Unfriend" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.Unfriend" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Display Name
-                        el-radio-group(v-model="sharedFeedFilters.wrist.DisplayName" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.DisplayName" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Trust Level
-                        el-radio-group(v-model="sharedFeedFilters.wrist.TrustLevel" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.TrustLevel" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                     .toggle-item
                         span.toggle-name Group Announcement
-                        el-radio-group(v-model="sharedFeedFilters.wrist['group.announcement']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist['group.announcement']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Group Join/Leave
-                        el-radio-group(v-model="sharedFeedFilters.wrist['group.informative']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist['group.informative']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Group Invite
-                        el-radio-group(v-model="sharedFeedFilters.wrist['group.invite']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist['group.invite']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Group Join Request
-                        el-radio-group(v-model="sharedFeedFilters.wrist['group.joinRequest']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist['group.joinRequest']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Instance Queue Ready
-                        el-radio-group(v-model="sharedFeedFilters.wrist['group.queueReady']" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist['group.queueReady']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Portal Spawn
-                        el-radio-group(v-model="sharedFeedFilters.wrist.PortalSpawn" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.PortalSpawn" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
@@ -2077,50 +2090,50 @@ html
                         span.toggle-name Video Play
                             el-tooltip(placement="top" style="margin-left:5px" content="Requires VRCX YouTube API option enabled")
                                 i.el-icon-warning
-                        el-radio-group(v-model="sharedFeedFilters.wrist.VideoPlay" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.VideoPlay" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Events
-                        el-radio-group(v-model="sharedFeedFilters.wrist.Event" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.Event" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name External
-                        el-radio-group(v-model="sharedFeedFilters.wrist.External" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.External" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
                         span.toggle-name Blocked Player Joins
-                        el-radio-group(v-model="sharedFeedFilters.wrist.BlockedOnPlayerJoined" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.BlockedOnPlayerJoined" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Blocked Player Leaves
-                        el-radio-group(v-model="sharedFeedFilters.wrist.BlockedOnPlayerLeft" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.BlockedOnPlayerLeft" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Muted Player Joins
-                        el-radio-group(v-model="sharedFeedFilters.wrist.MutedOnPlayerJoined" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.MutedOnPlayerJoined" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Muted Player Leaves
-                        el-radio-group(v-model="sharedFeedFilters.wrist.MutedOnPlayerLeft" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.MutedOnPlayerLeft" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                             el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                     .toggle-item
                         span.toggle-name Lobby Avatar Change
-                        el-radio-group(v-model="sharedFeedFilters.wrist.AvatarChange" size="mini")
+                        el-radio-group(v-model="sharedFeedFilters.wrist.AvatarChange" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                             el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
@@ -2131,34 +2144,34 @@ html
                             span.toggle-name Photon Event Logging
                         .toggle-item
                             span.toggle-name Lobby ChatBox Message
-                            el-radio-group(v-model="sharedFeedFilters.wrist.ChatBoxMessage" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.wrist.ChatBoxMessage" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="VIP") {{ $t('dialog.shared_feed_filters.favorite') }}
                                 el-radio-button(label="Friends") {{ $t('dialog.shared_feed_filters.friends') }}
                                 el-radio-button(label="Everyone") {{ $t('dialog.shared_feed_filters.everyone') }}
                         .toggle-item
                             span.toggle-name Blocked
-                            el-radio-group(v-model="sharedFeedFilters.wrist.Blocked" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.wrist.Blocked" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                         .toggle-item
                             span.toggle-name Unblocked
-                            el-radio-group(v-model="sharedFeedFilters.wrist.Unblocked" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.wrist.Unblocked" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                         .toggle-item
                             span.toggle-name Muted
-                            el-radio-group(v-model="sharedFeedFilters.wrist.Muted" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.wrist.Muted" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                         .toggle-item
                             span.toggle-name Unmuted
-                            el-radio-group(v-model="sharedFeedFilters.wrist.Unmuted" size="mini")
+                            el-radio-group(v-model="sharedFeedFilters.wrist.Unmuted" size="mini" @change="saveSharedFeedFilters")
                                 el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                                 el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                 template(#footer)
-                    el-button(type="small" @click="cancelSharedFeedFilters") {{ $t('dialog.shared_feed_filters.cancel') }}
-                    el-button(type="primary" size="small" @click="saveSharedFeedFilters") {{ $t('dialog.shared_feed_filters.save') }}
+                    el-button(type="small" @click="resetSharedFeedFilters") {{ $t('dialog.shared_feed_filters.reset') }}
+                    el-button(type="primary" size="small" @click="wristFeedFiltersDialog.visible = false") {{ $t('dialog.shared_feed_filters.close') }}
 
             //- dialog: Edit Invite Message
             el-dialog.x-dialog(:before-close="beforeDialogClose" @mousedown.native="dialogMouseDown" @mouseup.native="dialogMouseUp" ref="editInviteMessageDialog" :visible.sync="editInviteMessageDialog.visible" :title="$t('dialog.edit_invite_message.header')" width="400px")

@@ -1416,7 +1416,6 @@ speechSynthesis.getVoices();
 
     API.logout = function () {
         this.$emit('LOGOUT');
-        webApiService.clearCookies();
         // return this.call('logout', {
         //     method: 'PUT'
         // }).finally(() => {
@@ -1424,12 +1423,10 @@ speechSynthesis.getVoices();
         // });
     };
 
-    /*
-        params: {
-            username: string,
-            password: string
-        }
-    */
+    /**
+     * @param {{ username: string, password: string }} params credential to login
+     * @returns {Promise<{origin: boolean, json: any, params}>}
+     */
     API.login = function (params) {
         var { username, password, saveCredentials, cipher } = params;
         username = encodeURIComponent(username);
@@ -1468,11 +1465,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            code: string
-        }
-    */
+    /**
+     * @param {{ code: string }} params One-time password
+     * @returns {Promise<{json: any, params}>}
+     */
     API.verifyOTP = function (params) {
         return this.call('auth/twofactorauth/otp/verify', {
             method: 'POST',
@@ -1487,11 +1483,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            code: string
-        }
-    */
+    /**
+     * @param {{ code: string }} params One-time token
+     * @returns {Promise<{json: any, params}>}
+     */
     API.verifyTOTP = function (params) {
         return this.call('auth/twofactorauth/totp/verify', {
             method: 'POST',
@@ -1506,11 +1501,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            code: string
-        }
-    */
+    /**
+     * @param {{ code: string }} params One-time token
+     * @returns {Promise<{json: any, params}>}
+     */
     API.verifyEmailOTP = function (params) {
         return this.call('auth/twofactorauth/emailotp/verify', {
             method: 'POST',
@@ -1642,6 +1636,7 @@ speechSynthesis.getVoices();
             this.applyUserTrustLevel(ref);
             this.applyUserLanguage(ref);
             this.applyPresenceLocation(ref);
+            this.applyQueuedInstance(ref.queuedInstance);
             // update group list
             if (json.presence?.groups) {
                 for (var groupId of json.presence.groups) {
@@ -1668,6 +1663,7 @@ speechSynthesis.getVoices();
                 currentAvatar: '',
                 currentAvatarAssetUrl: '',
                 currentAvatarImageUrl: '',
+                currentAvatarTags: [],
                 currentAvatarThumbnailImageUrl: '',
                 date_joined: '',
                 developerType: '',
@@ -1677,10 +1673,12 @@ speechSynthesis.getVoices();
                 friendGroupNames: [],
                 friendKey: '',
                 friends: [],
+                googleId: '',
                 hasBirthday: false,
                 hasEmail: false,
                 hasLoggedInFromClient: false,
                 hasPendingEmail: false,
+                hideContentFilterSettings: false,
                 homeLocation: '',
                 id: '',
                 isFriend: false,
@@ -1693,8 +1691,10 @@ speechSynthesis.getVoices();
                 offlineFriends: [],
                 onlineFriends: [],
                 pastDisplayNames: [],
+                picoId: '',
                 presence: {
                     avatarThumbnail: '',
+                    currentAvatarTags: '',
                     displayName: '',
                     groups: [],
                     id: '',
@@ -1705,10 +1705,12 @@ speechSynthesis.getVoices();
                     status: '',
                     travelingToInstance: '',
                     travelingToWorld: '',
+                    userIcon: '',
                     world: '',
                     ...json.presence
                 },
                 profilePicOverride: '',
+                queuedInstance: '',
                 state: '',
                 status: '',
                 statusDescription: '',
@@ -1722,7 +1724,10 @@ speechSynthesis.getVoices();
                 unsubscribe: false,
                 updated_at: '',
                 userIcon: '',
+                userLanguage: '',
+                userLanguageCode: '',
                 username: '',
+                viveId: '',
                 // VRCX
                 $online_for: Date.now(),
                 $offline_for: '',
@@ -1989,11 +1994,11 @@ speechSynthesis.getVoices();
         return ref;
     };
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * Fetch user from API.
+     * @param {{ userId: string }} params identifier of registered user
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getUser = function (params) {
         return this.call(`users/${params.userId}`, {
             method: 'GET'
@@ -2007,11 +2012,11 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * Fetch user from cache if they're in it. Otherwise, calls API.
+     * @param {{ userId: string }} params identifier of registered user
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getCachedUser = function (params) {
         return new Promise((resolve, reject) => {
             var ref = this.cachedUsers.get(params.userId);
@@ -2028,15 +2033,18 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number,
-            search: string,
-            sort: string ('nuisanceFactor', 'created', '_created_at', 'last_login'),
-            order: string ('ascending', 'descending')
-        }
-    */
+    /** @typedef {{
+     * n: number,
+     * offset: number,
+     * search: string,
+     * sort: 'nuisanceFactor' | 'created' | '_created_at' | 'last_login',
+     * order: 'ascending', 'descending'
+     }} GetUsersParameters */
+    /**
+     * Fetch multiple users from API.
+     * @param params {GetUsersParameters} filtering and sorting parameters
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getUsers = function (params) {
         return this.call('users', {
             method: 'GET',
@@ -2051,12 +2059,18 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            status: string ('active', 'offline', 'busy', 'ask me', 'join me'),
-            statusDescription: string
-        }
-    */
+    /**
+     * @typedef {{
+     *     status: 'active' | 'offline' | 'busy' | 'ask me' | 'join me',
+     *     statusDescription: string
+     * }} SaveCurrentUserParameters
+     */
+
+    /**
+     * Updates current user's status.
+     * @param params {SaveCurrentUserParameters} new status to be set
+     * @returns {Promise<{json: any, params}>}
+     */
     API.saveCurrentUser = function (params) {
         return this.call(`users/${this.currentUser.id}`, {
             method: 'PUT',
@@ -2071,11 +2085,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            tags: array[string]
-        }
-    */
+    /**
+     * @param params {string[]}
+     * @returns {Promise<{json: any, params}>}
+     */
     API.addUserTags = function (params) {
         return this.call(`users/${this.currentUser.id}/addTags`, {
             method: 'POST',
@@ -2090,11 +2103,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            tags: array[string]
-        }
-    */
+    /**
+     * @param params {string[]}
+     * @returns {Promise<{json: any, params}>}
+     */
     API.removeUserTags = function (params) {
         return this.call(`users/${this.currentUser.id}/removeTags`, {
             method: 'POST',
@@ -2109,11 +2121,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * @param params {{ userId: string }}
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getUserFeedback = function (params) {
         return this.call(`users/${params.userId}/feedback`, {
             method: 'GET',
@@ -2232,7 +2243,7 @@ speechSynthesis.getVoices();
             gameLogLocation,
             userLocation
         );
-        return null;
+        return 'test_world';
     };
 
     API.applyWorld = function (json) {
@@ -2288,11 +2299,11 @@ speechSynthesis.getVoices();
         return ref;
     };
 
-    /*
-        params: {
-            worldId: string
-        }
-    */
+    /**
+     *
+     * @param {{worldId: string}} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getWorld = function (params) {
         return this.call(`worlds/${params.worldId}`, {
             method: 'GET'
@@ -2306,11 +2317,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            worldId: string
-        }
-    */
+    /**
+     * @param {{worldId: string}} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getCachedWorld = function (params) {
         return new Promise((resolve, reject) => {
             var ref = this.cachedWorlds.get(params.worldId);
@@ -2327,20 +2337,25 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number,
-            search: string,
-            userId: string,
-            user: string ('me','friend')
-            sort: string ('popularity','heat','trust','shuffle','favorites','reportScore','reportCount','publicationDate','labsPublicationDate','created','_created_at','updated','_updated_at','order'),
-            order: string ('ascending','descending'),
-            releaseStatus: string ('public','private','hidden','all'),
-            featured: boolean
-        },
-        option: string
-    */
+    /**
+     * @typedef {{
+          n: number,
+          offset: number,
+          search: string,
+          userId: string,
+          user: 'me' | 'friend',
+          sort: 'popularity' | 'heat' | 'trust' | 'shuffle' | 'favorites' | 'reportScore' | 'reportCount' | 'publicationDate' | 'labsPublicationDate' | 'created' | '_created_at' | 'updated' | '_updated_at' | 'order',
+          order: 'ascending' | 'descending',
+          releaseStatus: 'public' | 'private' | 'hidden' | 'all',
+          featured: boolean
+     }} WorldSearchParameter
+     */
+    /**
+     *
+     * @param {WorldSearchParameter} params
+     * @param {string?} option sub-path of calling endpoint
+     * @returns {Promise<{json: any, params, option}>}
+     */
     API.getWorlds = function (params, option) {
         var endpoint = 'worlds';
         if (typeof option !== 'undefined') {
@@ -2360,11 +2375,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            worldId: string
-        }
-    */
+    /**
+     * @param {{worldId: string}} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.deleteWorld = function (params) {
         return this.call(`worlds/${params.worldId}`, {
             method: 'DELETE'
@@ -2378,11 +2392,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            id: string
-        }
-    */
+    /**
+     * @param {{id: string}} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.saveWorld = function (params) {
         return this.call(`worlds/${params.id}`, {
             method: 'PUT',
@@ -2397,11 +2410,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            worldId: string
-        }
-    */
+    /**
+     * @param {{worldId: string}} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.publishWorld = function (params) {
         return this.call(`worlds/${params.worldId}/publish`, {
             method: 'PUT',
@@ -2416,11 +2428,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            worldId: string
-        }
-    */
+    /**
+     * @param {{worldId: string}} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.unpublishWorld = function (params) {
         return this.call(`worlds/${params.worldId}/publish`, {
             method: 'DELETE',
@@ -2440,12 +2451,10 @@ speechSynthesis.getVoices();
 
     API.cachedInstances = new Map();
 
-    /*
-        params: {
-            worldId: string,
-            instanceId: string
-        }
-    */
+    /**
+     * @param {{worldId: string, instanceId: string}} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getInstance = function (params) {
         return this.call(`instances/${params.worldId}:${params.instanceId}`, {
             method: 'GET'
@@ -2459,17 +2468,22 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            worldId: string,
-            type: string,
-            region: string,
-            ownerId: string,
-            roleIds: string[],
-            groupAccessType: string,
-            queueEnabled: boolean
-        }
-    */
+    /**
+     * @typedef {{
+     *     worldId: string,
+     *     type: string,
+     *     region: string,
+     *     ownerId: string,
+     *     roleIds: string[],
+     *     groupAccessType: string,
+     *     queueEnabled: boolean
+     * }} CreateInstanceParameter
+     */
+
+    /**
+     * @param {CreateInstanceParameter} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.createInstance = function (params) {
         return this.call('instances', {
             method: 'POST',
@@ -2484,13 +2498,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            worldId: string,
-            instanceId: string,
-            shortName: string
-        }
-    */
+    /**
+     * @param {{ worldId: string, instanceId: string, shortName: string }} instance
+     * @returns {Promise<{instance, json: T, params: {}}>}
+     */
     API.getInstanceShortName = function (instance) {
         var params = {};
         if (instance.shortName) {
@@ -2513,11 +2524,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            shortName: string
-        }
-    */
+    /**
+     * @param {{ shortName: string }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getInstanceFromShortName = function (params) {
         return this.call(`instances/s/${params.shortName}`, {
             method: 'GET'
@@ -2531,14 +2541,15 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            worldId: string,
-            instanceId: string,
-            shortName: string
-        }
-    */
+    /**
+     * Send invite to current user.
+     * @param {{ worldId: string, instanceId: string, shortName: string }} instance
+     * @returns {Promise<{instance, json: any, params}>}
+     */
     API.selfInvite = function (instance) {
+        /**
+         * @type {{ shortName?: string }}
+         */
         var params = {};
         if (instance.shortName) {
             params.shortName = instance.shortName;
@@ -2669,6 +2680,12 @@ speechSynthesis.getVoices();
                     userId: json.id
                 }
             });
+            if (json.location === 'traveling') {
+                this.getUser({
+                    userId: json.id
+                });
+                // console.log('Fetching traveling user', json.id);
+            } // ?? hmm
         }
     });
 
@@ -2704,9 +2721,23 @@ speechSynthesis.getVoices();
                 // API offset limit is 5000
                 break;
             }
-            var args = await this.getFriends(params);
-            friends = friends.concat(args.json);
-            params.offset += 50;
+            for (var j = 0; j < 10; j++) {
+                // handle 429 ratelimit error, retry 10 times
+                try {
+                    var args = await this.getFriends(params);
+                    friends = friends.concat(args.json);
+                    params.offset += 50;
+                    break;
+                } catch (err) {
+                    console.error(err);
+                    if (j === 9) {
+                        throw err;
+                    }
+                    await new Promise((resolve) => {
+                        workerTimers.setTimeout(resolve, 5000);
+                    });
+                }
+            }
         }
         return friends;
     };
@@ -2728,20 +2759,32 @@ speechSynthesis.getVoices();
                 // API offset limit is 5000
                 break;
             }
-            var args = await this.getFriends(params);
-            friends = friends.concat(args.json);
-            params.offset += 50;
+            for (var j = 0; j < 10; j++) {
+                // handle 429 ratelimit error, retry 10 times
+                try {
+                    var args = await this.getFriends(params);
+                    friends = friends.concat(args.json);
+                    params.offset += 50;
+                    break;
+                } catch (err) {
+                    console.error(err);
+                    if (j === 9) {
+                        throw err;
+                    }
+                    await new Promise((resolve) => {
+                        workerTimers.setTimeout(resolve, 5000);
+                    });
+                }
+            }
         }
         return friends;
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number,
-            offline: boolean
-        }
-    */
+    /**
+     * Fetch friends of current user.
+     * @param {{ n: number, offset: number, offline: boolean }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getFriends = function (params) {
         return this.call('auth/user/friends', {
             method: 'GET',
@@ -2756,11 +2799,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * @param {{ userId: string }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.deleteFriend = function (params) {
         return this.call(`auth/user/friends/${params.userId}`, {
             method: 'DELETE'
@@ -2774,11 +2816,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * @param {{ userId: string }} params
+     * @returns {Promise<{json: T, params}>}
+     */
     API.sendFriendRequest = function (params) {
         return this.call(`user/${params.userId}/friendRequest`, {
             method: 'POST'
@@ -2792,11 +2833,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * @param {{ userId: string }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.cancelFriendRequest = function (params) {
         return this.call(`user/${params.userId}/friendRequest`, {
             method: 'DELETE'
@@ -2825,11 +2865,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * @param {{ userId: string }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getFriendStatus = function (params) {
         return this.call(`user/${params.userId}/friendStatus`, {
             method: 'GET'
@@ -2933,11 +2972,10 @@ speechSynthesis.getVoices();
         return ref;
     };
 
-    /*
-        params: {
-            avatarId: string
-        }
-    */
+    /**
+     * @param {{ avatarId: string }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getAvatar = function (params) {
         return this.call(`avatars/${params.avatarId}`, {
             method: 'GET'
@@ -2951,19 +2989,24 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number,
-            search: string,
-            userId: string,
-            user: string ('me','friends')
-            sort: string ('created','updated','order','_created_at','_updated_at'),
-            order: string ('ascending','descending'),
-            releaseStatus: string ('public','private','hidden','all'),
-            featured: boolean
-        }
-    */
+    /**
+     * @typedef {{
+     *     n: number,
+     *     offset: number,
+     *     search: string,
+     *     userId: string,
+     *     user: 'me' | 'friends'
+     *     sort: 'created' | 'updated' | 'order' | '_created_at' | '_updated_at',
+     *     order: 'ascending' | 'descending',
+     *     releaseStatus: 'public' | 'private' | 'hidden' | 'all',
+     *     featured: boolean
+     * }} GetAvatarsParameter
+     */
+    /**
+     *
+     * @param {GetAvatarsParameter} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getAvatars = function (params) {
         return this.call('avatars', {
             method: 'GET',
@@ -2978,12 +3021,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            id: string
-            releaseStatus: string ('public','private'),
-        }
-    */
+    /**
+     * @param {{ id: string, releaseStatus: 'public' | 'private' }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.saveAvatar = function (params) {
         return this.call(`avatars/${params.id}`, {
             method: 'PUT',
@@ -2998,11 +3039,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            avatarId: string
-        }
-    */
+    /**
+     * @param {{avatarId: string }} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.selectAvatar = function (params) {
         return this.call(`avatars/${params.avatarId}/select`, {
             method: 'PUT',
@@ -3017,11 +3057,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            avatarId: string
-        }
-    */
+    /**
+     * @param {{ avatarId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.selectFallbackAvatar = function (params) {
         return this.call(`avatars/${params.avatarId}/selectfallback`, {
             method: 'PUT',
@@ -3036,11 +3075,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            avatarId: string
-        }
-    */
+    /**
+     * @param {{ avatarId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.deleteAvatar = function (params) {
         return this.call(`avatars/${params.avatarId}`, {
             method: 'DELETE'
@@ -3050,6 +3088,40 @@ speechSynthesis.getVoices();
                 params
             };
             this.$emit('AVATAR:DELETE', args);
+            return args;
+        });
+    };
+
+    /**
+     * @param {{ avatarId: string }} params
+     * @returns {Promise<{json: any, params}>}
+     */
+    API.createImposter = function (params) {
+        return this.call(`avatars/${params.avatarId}/impostor/enqueue`, {
+            method: 'POST'
+        }).then((json) => {
+            var args = {
+                json,
+                params
+            };
+            this.$emit('AVATAR:IMPOSTER:CREATE', args);
+            return args;
+        });
+    };
+
+    /**
+     * @param {{ avatarId: string }} params
+     * @returns {Promise<{json: T, params}>}
+     */
+    API.deleteImposter = function (params) {
+        return this.call(`avatars/${params.avatarId}/impostor`, {
+            method: 'DELETE'
+        }).then((json) => {
+            var args = {
+                json,
+                params
+            };
+            this.$emit('AVATAR:IMPOSTER:DELETE', args);
             return args;
         });
     };
@@ -3276,15 +3348,20 @@ speechSynthesis.getVoices();
         this.isNotificationsLoading = false;
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number,
-            sent: boolean,
-            type: string,
-            after: string (ISO8601 or 'five_minutes_ago')
-        }
-    */
+    /** @typedef {{
+     *      n: number,
+     *      offset: number,
+     *      sent: boolean,
+     *      type: string,
+     *      //  (ISO8601 or 'five_minutes_ago')
+     *      after: 'five_minutes_ago' | (string & {})
+     }} NotificationFetchParameter */
+
+    /**
+     *
+     * @param {NotificationFetchParameter} params
+     * @returns {Promise<{json: any, params}>}
+     */
     API.getNotifications = function (params) {
         return this.call('auth/user/notifications', {
             method: 'GET',
@@ -3383,12 +3460,13 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
+    /**
+    * @param {{
             notificationId: string,
             responseType: string,
             responseData: string
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.sendNotificationResponse = function (params) {
         return this.call(`notifications/${params.notificationId}/respond`, {
@@ -3413,14 +3491,20 @@ speechSynthesis.getVoices();
         console.log('NOTIFICATION:RESPONSE', args);
     });
 
-    /*
-        params: {
+    /**
+     * string that represents valid serialized JSON of T's value
+     * @template T=any
+     * @typedef {string} JsonString
+     */
+    /**
+    * @param {{
             receiverUserId: string,
             type: string,
             message: string,
             seen: boolean,
-            details: json-string
-        }
+            details: JsonString<any>
+     }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.sendInvite = function (params, receiverUserId) {
         return this.call(`invite/${receiverUserId}`, {
@@ -3517,11 +3601,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            notificationId: string
-        }
-    */
+    /**
+     * @param {{ notificationId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.acceptNotification = function (params) {
         return this.call(
             `auth/user/notifications/${params.notificationId}/accept`,
@@ -3538,11 +3621,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            notificationId: string
-        }
-    */
+    /**
+     * @param {{ notificationId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.hideNotification = function (params) {
         return this.call(
             `auth/user/notifications/${params.notificationId}/hide`,
@@ -3704,12 +3786,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            moderated: string,
-            type: string
-        }
-    */
+    /**
+     * @param {{ moderated: string, type: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     // old-way: POST auth/user/blocks {blocked:userId}
     API.sendPlayerModeration = function (params) {
         return this.call('auth/user/playermoderations', {
@@ -3725,12 +3805,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            moderated: string,
-            type: string
-        }
-    */
+    /**
+     * @param {{ moderated: string, type: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     // old-way: PUT auth/user/unblocks {blocked:userId}
     API.deletePlayerModeration = function (params) {
         return this.call('auth/user/unplayermoderate', {
@@ -3763,12 +3841,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            avatarModerationType: string,
-            targetAvatarId: string
-        }
-    */
+    /**
+     * @param {{ avatarModerationType: string, targetAvatarId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.sendAvatarModeration = function (params) {
         return this.call('auth/user/avatarmoderations', {
             method: 'POST',
@@ -3783,12 +3859,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            avatarModerationType: string,
-            targetAvatarId: string
-        }
-    */
+    /**
+     * @param {{ avatarModerationType: string, targetAvatarId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.deleteAvatarModeration = function (params) {
         return this.call(
             `auth/user/avatarmoderations?targetAvatarId=${encodeURIComponent(
@@ -4411,14 +4485,15 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number,
-            type: string,
-            tag: string
-        }
-    */
+    /**
+     * @param {{
+     * n: number,
+     * offset: number,
+     * type: string,
+     * tag: string
+     * }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.getFavorites = function (params) {
         return this.call('favorites', {
             method: 'GET',
@@ -4433,13 +4508,14 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            type: string,
-            favoriteId: string (objectId),
-            tags: string
-        }
-    */
+    /**
+     * @param {{
+     *    type: string,
+     *    favoriteId: string (objectId),
+     *    tags: string
+     * }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.addFavorite = function (params) {
         return this.call('favorites', {
             method: 'POST',
@@ -4454,11 +4530,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            objectId: string
-        }
-    */
+    /**
+     * @param {{ objectId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.deleteFavorite = function (params) {
         return this.call(`favorites/${params.objectId}`, {
             method: 'DELETE'
@@ -4472,13 +4547,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number,
-            type: string
-        }
-    */
+    /**
+     * @param {{ n: number, offset: number, type: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.getFavoriteGroups = function (params) {
         return this.call('favorite/groups', {
             method: 'GET',
@@ -4493,14 +4565,11 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            type: string,
-            group: string (name),
-            displayName: string,
-            visibility: string
-        }
-    */
+    /**
+     *
+     * @param {{ type: string, group: string, displayName: string, visibility: string }} params group is a name
+     * @return { Promise<{json: any, params}> }
+     */
     API.saveFavoriteGroup = function (params) {
         return this.call(
             `favorite/group/${params.type}/${params.group}/${this.currentUser.id}`,
@@ -4518,12 +4587,13 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            type: string,
-            group: string (name)
-        }
-    */
+    /**
+     * @param {{
+     *    type: string,
+     *    group: string (name)
+     * }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.clearFavoriteGroup = function (params) {
         return this.call(
             `favorite/group/${params.type}/${params.group}/${this.currentUser.id}`,
@@ -4541,11 +4611,12 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            n: number,
-            offset: number
-        }
+    /**
+    * @param {{
+        n: number,
+        offset: number
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.getFavoriteWorlds = function (params) {
         return this.call('worlds/favorites', {
@@ -4561,11 +4632,12 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
+    /**
+    * @param {{
             n: number,
             offset: number
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.getFavoriteAvatars = function (params) {
         return this.call('avatars/favorites', {
@@ -4612,7 +4684,7 @@ speechSynthesis.getVoices();
             }
             this.errorNoty = new Noty({
                 type: 'error',
-                text: `WebSocket Error: ${err}`
+                text: escapeTag(`WebSocket Error: ${err}`)
             }).show();
             return;
         }
@@ -5228,7 +5300,7 @@ speechSynthesis.getVoices();
             nextAutoStateChange: 0,
             isDiscordActive: false,
             isGameRunning: false,
-            isGameNoVR: configRepository.getBool('isGameNoVR'),
+            isGameNoVR: true,
             isSteamVRRunning: false,
             isHmdAfk: false,
             appVersion: '',
@@ -5240,19 +5312,18 @@ speechSynthesis.getVoices();
         methods: {},
         watch: {},
         el: '#x-app',
-        mounted() {
-            this.changeThemeMode();
-            AppApi.SetUserAgent();
-            AppApi.GetVersion().then((version) => {
-                this.appVersion = version;
-                this.comapreAppVersion();
-                this.setBranch();
-                if (this.autoUpdateVRCX !== 'Off') {
-                    this.checkForVRCXUpdate();
-                }
-            });
-            AppApi.CheckGameRunning();
-            AppApi.SetAppLauncherSettings(
+        async mounted() {
+            await this.changeThemeMode();
+            await AppApi.SetUserAgent();
+            this.appVersion = await AppApi.GetVersion();
+            await this.compareAppVersion();
+            await this.setBranch();
+            if (this.autoUpdateVRCX !== 'Off') {
+                this.checkForVRCXUpdate();
+            }
+            await AppApi.CheckGameRunning();
+            this.isGameNoVR = await configRepository.getBool('isGameNoVR');
+            await AppApi.SetAppLauncherSettings(
                 this.enableAppLauncher,
                 this.enableAppLauncherAutoClose
             );
@@ -5275,12 +5346,13 @@ speechSynthesis.getVoices();
             this.refreshCustomScript();
             this.checkVRChatDebugLogging();
             this.checkAutoBackupRestoreVrcRegistry();
-            this.migrateStoredUsers();
-            this.$nextTick(function () {
+            await this.migrateStoredUsers();
+            this.$nextTick(async function () {
                 this.$el.style.display = '';
                 if (
                     !this.enablePrimaryPassword &&
-                    configRepository.getString('lastUserLoggedIn') !== null
+                    (await configRepository.getString('lastUserLoggedIn')) !==
+                        null
                 ) {
                     // login at startup
                     this.loginForm.loading = true;
@@ -5349,27 +5421,35 @@ speechSynthesis.getVoices();
         });
     };
 
-    $app.methods.comapreAppVersion = function () {
+    $app.methods.compareAppVersion = async function () {
         if (!this.appVersion) {
             return;
         }
-        var lastVersion = configRepository.getString(
+        var lastVersion = await configRepository.getString(
             'VRCX_lastVRCXVersion',
             ''
         );
         if (!lastVersion) {
-            configRepository.setString('VRCX_lastVRCXVersion', this.appVersion);
+            await configRepository.setString(
+                'VRCX_lastVRCXVersion',
+                this.appVersion
+            );
             return;
         }
         if (lastVersion !== this.appVersion) {
-            configRepository.setString('VRCX_lastVRCXVersion', this.appVersion);
-            if (configRepository.getString('VRCX_branch') === 'Stable') {
+            await configRepository.setString(
+                'VRCX_lastVRCXVersion',
+                this.appVersion
+            );
+            if (
+                (await configRepository.getString('VRCX_branch')) === 'Stable'
+            ) {
                 this.showChangeLogDialog();
             }
         }
     };
 
-    $app.methods.setBranch = function () {
+    $app.methods.setBranch = async function () {
         if (!this.appVersion) {
             return;
         }
@@ -5378,7 +5458,7 @@ speechSynthesis.getVoices();
         } else {
             this.branch = 'Stable';
         }
-        configRepository.setString('VRCX_branch', this.branch);
+        await configRepository.setString('VRCX_branch', this.branch);
     };
 
     $app.methods.languageClass = function (language) {
@@ -5453,7 +5533,7 @@ speechSynthesis.getVoices();
         workerTimers.setTimeout(() => this.updateLoop(), 500);
     };
 
-    $app.methods.updateIsGameRunning = function (
+    $app.methods.updateIsGameRunning = async function (
         isGameRunning,
         isSteamVRRunning,
         isHmdAfk
@@ -5464,7 +5544,7 @@ speechSynthesis.getVoices();
                 API.currentUser.$online_for = Date.now();
                 API.currentUser.$offline_for = '';
             } else {
-                configRepository.setBool('isGameNoVR', this.isGameNoVR);
+                await configRepository.setBool('isGameNoVR', this.isGameNoVR);
                 API.currentUser.$online_for = '';
                 API.currentUser.$offline_for = Date.now();
                 this.removeAllQueuedInstances();
@@ -7364,10 +7444,12 @@ speechSynthesis.getVoices();
     };
 
     API.$on('USER:2FA', function () {
+        AppApi.FocusWindow();
         $app.promptTOTP();
     });
 
     API.$on('USER:EMAILOTP', function () {
+        AppApi.FocusWindow();
         $app.promptEmailOTP();
     });
 
@@ -7398,7 +7480,7 @@ speechSynthesis.getVoices();
         webApiService.clearCookies();
         // eslint-disable-next-line require-atomic-updates
         $app.loginForm.lastUserLoggedIn = '';
-        configRepository.remove('lastUserLoggedIn');
+        await configRepository.remove('lastUserLoggedIn');
         // workerTimers.setTimeout(() => location.reload(), 500);
     });
 
@@ -7425,7 +7507,7 @@ speechSynthesis.getVoices();
         });
     };
 
-    $app.data.enablePrimaryPassword = configRepository.getBool(
+    $app.data.enablePrimaryPassword = await configRepository.getBool(
         'enablePrimaryPassword',
         false
     );
@@ -7460,38 +7542,41 @@ speechSynthesis.getVoices();
                                     .loginParmas.password,
                                 value
                             )
-                            .then((pt) => {
+                            .then(async (pt) => {
                                 this.saveCredentials = {
                                     username:
                                         this.loginForm.savedCredentials[userId]
                                             .loginParmas.username,
                                     password: pt
                                 };
-                                this.updateStoredUser(
+                                await this.updateStoredUser(
                                     this.loginForm.savedCredentials[userId].user
                                 );
-                                configRepository.setBool(
+                                await configRepository.setBool(
                                     'enablePrimaryPassword',
                                     false
                                 );
                             })
-                            .catch(() => {
+                            .catch(async () => {
                                 this.enablePrimaryPassword = true;
-                                configRepository.setBool(
+                                await configRepository.setBool(
                                     'enablePrimaryPassword',
                                     true
                                 );
                             });
                     }
                 })
-                .catch(() => {
+                .catch(async () => {
                     this.enablePrimaryPassword = true;
-                    configRepository.setBool('enablePrimaryPassword', true);
+                    await configRepository.setBool(
+                        'enablePrimaryPassword',
+                        true
+                    );
                 });
         }
     };
-    $app.methods.setPrimaryPassword = function () {
-        configRepository.setBool(
+    $app.methods.setPrimaryPassword = async function () {
+        await configRepository.setBool(
             'enablePrimaryPassword',
             this.enablePrimaryPassword
         );
@@ -7522,9 +7607,9 @@ speechSynthesis.getVoices();
 
     $app.methods.updateStoredUser = async function (currentUser) {
         var savedCredentials = {};
-        if (configRepository.getString('savedCredentials') !== null) {
+        if ((await configRepository.getString('savedCredentials')) !== null) {
             savedCredentials = JSON.parse(
-                configRepository.getString('savedCredentials')
+                await configRepository.getString('savedCredentials')
             );
         }
         if (this.saveCredentials) {
@@ -7541,16 +7626,19 @@ speechSynthesis.getVoices();
         }
         this.loginForm.savedCredentials = savedCredentials;
         var jsonCredentialsArray = JSON.stringify(savedCredentials);
-        configRepository.setString('savedCredentials', jsonCredentialsArray);
+        await configRepository.setString(
+            'savedCredentials',
+            jsonCredentialsArray
+        );
         this.loginForm.lastUserLoggedIn = currentUser.id;
-        configRepository.setString('lastUserLoggedIn', currentUser.id);
+        await configRepository.setString('lastUserLoggedIn', currentUser.id);
     };
 
-    $app.methods.migrateStoredUsers = function () {
+    $app.methods.migrateStoredUsers = async function () {
         var savedCredentials = {};
-        if (configRepository.getString('savedCredentials') !== null) {
+        if ((await configRepository.getString('savedCredentials')) !== null) {
             savedCredentials = JSON.parse(
-                configRepository.getString('savedCredentials')
+                await configRepository.getString('savedCredentials')
             );
         }
         for (let name in savedCredentials) {
@@ -7560,7 +7648,7 @@ speechSynthesis.getVoices();
                 delete savedCredentials[name];
             }
         }
-        configRepository.setString(
+        await configRepository.setString(
             'savedCredentials',
             JSON.stringify(savedCredentials)
         );
@@ -7641,19 +7729,19 @@ speechSynthesis.getVoices();
         });
     };
 
-    $app.methods.deleteSavedLogin = function (userId) {
+    $app.methods.deleteSavedLogin = async function (userId) {
         var savedCredentials = JSON.parse(
-            configRepository.getString('savedCredentials')
+            await configRepository.getString('savedCredentials')
         );
         delete savedCredentials[userId];
         // Disable primary password when no account is available.
         if (Object.keys(savedCredentials).length === 0) {
             this.enablePrimaryPassword = false;
-            configRepository.setBool('enablePrimaryPassword', false);
+            await configRepository.setBool('enablePrimaryPassword', false);
         }
         this.loginForm.savedCredentials = savedCredentials;
         var jsonCredentials = JSON.stringify(savedCredentials);
-        configRepository.setString('savedCredentials', jsonCredentials);
+        await configRepository.setString('savedCredentials', jsonCredentials);
         new Noty({
             type: 'success',
             text: 'Account removed.'
@@ -7668,10 +7756,20 @@ speechSynthesis.getVoices();
                 this.logout();
             } else {
                 $app.relogin(user).then(() => {
-                    new Noty({
-                        type: 'success',
-                        text: 'Automatically logged in.'
-                    }).show();
+                    if (this.errorNoty) {
+                        this.errorNoty.close();
+                    }
+                    if (!navigator.onLine) {
+                        this.errorNoty = new Noty({
+                            type: 'error',
+                            text: 'You are offline.'
+                        }).show();
+                    } else {
+                        this.errorNoty = new Noty({
+                            type: 'success',
+                            text: 'Automatically logged in.'
+                        }).show();
+                    }
                 });
             }
         }
@@ -7685,10 +7783,12 @@ speechSynthesis.getVoices();
         websocket: '',
         saveCredentials: false,
         savedCredentials:
-            configRepository.getString('savedCredentials') !== null
-                ? JSON.parse(configRepository.getString('savedCredentials'))
+            (await configRepository.getString('savedCredentials')) !== null
+                ? JSON.parse(
+                      await configRepository.getString('savedCredentials')
+                  )
                 : {},
-        lastUserLoggedIn: configRepository.getString('lastUserLoggedIn'),
+        lastUserLoggedIn: await configRepository.getString('lastUserLoggedIn'),
         rules: {
             username: [
                 {
@@ -9102,7 +9202,10 @@ speechSynthesis.getVoices();
         return true;
     };
 
-    $app.data.tablePageSize = configRepository.getInt('VRCX_tablePageSize', 15);
+    $app.data.tablePageSize = await configRepository.getInt(
+        'VRCX_tablePageSize',
+        15
+    );
 
     $app.data.feedTable = {
         data: [],
@@ -9129,11 +9232,14 @@ speechSynthesis.getVoices();
     $app.data.feedSessionTable = [];
 
     $app.methods.feedTableLookup = async function () {
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_feedTableFilters',
             JSON.stringify(this.feedTable.filter)
         );
-        configRepository.setBool('VRCX_feedTableVIPFilter', this.feedTable.vip);
+        await configRepository.setBool(
+            'VRCX_feedTableVIPFilter',
+            this.feedTable.vip
+        );
         this.feedTable.loading = true;
         var vipList = [];
         if (this.feedTable.vip) {
@@ -9177,7 +9283,9 @@ speechSynthesis.getVoices();
         await this.refreshNotifications();
         await $app.getCurrentUserGroups();
         try {
-            if (configRepository.getBool(`friendLogInit_${args.json.id}`)) {
+            if (
+                await configRepository.getBool(`friendLogInit_${args.json.id}`)
+            ) {
                 await $app.getFriendLog();
             } else {
                 await $app.initFriendLog(args.json.id);
@@ -9742,7 +9850,7 @@ speechSynthesis.getVoices();
     $app.data.gameLogSessionTable = [];
 
     $app.methods.gameLogTableLookup = async function () {
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_gameLogTableFilters',
             JSON.stringify(this.gameLogTable.filter)
         );
@@ -10095,9 +10203,6 @@ speechSynthesis.getVoices();
                 database.addGamelogResourceLoadToDatabase(entry);
                 break;
             case 'screenshot':
-                if (!this.screenshotHelper) {
-                    break;
-                }
                 // var entry = {
                 //     created_at: gameLog.dt,
                 //     type: 'Event',
@@ -10107,33 +10212,8 @@ speechSynthesis.getVoices();
                 //     )}`
                 // };
                 // database.addGamelogEventToDatabase(entry);
-                var location = API.parseLocation(this.lastLocation.location);
-                var metadata = {
-                    application: 'VRCX',
-                    version: 1,
-                    author: {
-                        id: API.currentUser.id,
-                        displayName: API.currentUser.displayName
-                    },
-                    world: {
-                        name: this.lastLocation.name,
-                        id: location.worldId,
-                        instanceId: this.lastLocation.location
-                    },
-                    players: []
-                };
-                for (var user of this.lastLocation.playerList.values()) {
-                    metadata.players.push({
-                        id: user.userId,
-                        displayName: user.displayName
-                    });
-                }
-                AppApi.AddScreenshotMetadata(
-                    gameLog.screenshotPath,
-                    JSON.stringify(metadata),
-                    location.worldId,
-                    this.screenshotHelperModifyFilename
-                );
+
+                this.processScreenshot(gameLog.screenshotPath);
                 break;
             case 'api-request':
                 var bias = Date.parse(gameLog.dt) + 60 * 1000;
@@ -10721,7 +10801,7 @@ speechSynthesis.getVoices();
         'MasterMigrate'
     ];
 
-    $app.methods.photonEventTableFilterChange = function () {
+    $app.methods.photonEventTableFilterChange = async function () {
         this.photonEventTable.filters[0].value = this.photonEventTableFilter;
         this.photonEventTable.filters[1].value =
             this.photonEventTableTypeFilter;
@@ -10731,11 +10811,11 @@ speechSynthesis.getVoices();
         this.photonEventTablePrevious.filters[1].value =
             this.photonEventTableTypeFilter;
 
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_photonEventTypeFilter',
             JSON.stringify(this.photonEventTableTypeFilter)
         );
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_photonEventTypeOverlayFilter',
             JSON.stringify(this.photonEventTableTypeOverlayFilter)
         );
@@ -12776,6 +12856,38 @@ speechSynthesis.getVoices();
             buttonUrl = '';
         } else if (this.isRpcWorld(L.tag)) {
             // custom world rpc
+            if (
+                L.worldId === 'wrld_f20326da-f1ac-45fc-a062-609723b097b1' ||
+                L.worldId === 'wrld_10e5e467-fc65-42ed-8957-f02cace1398c' ||
+                L.worldId === 'wrld_04899f23-e182-4a8d-b2c7-2c74c7c15534'
+            ) {
+                appId = '784094509008551956';
+                bigIcon = 'pypy';
+            } else if (
+                L.worldId === 'wrld_42377cf1-c54f-45ed-8996-5875b0573a83' ||
+                L.worldId === 'wrld_dd6d2888-dbdc-47c2-bc98-3d631b2acd7c'
+            ) {
+                appId = '846232616054030376';
+                bigIcon = 'vr_dancing';
+            } else if (
+                L.worldId === 'wrld_52bdcdab-11cd-4325-9655-0fb120846945' ||
+                L.worldId === 'wrld_2d40da63-8f1f-4011-8a9e-414eb8530acd'
+            ) {
+                appId = '939473404808007731';
+                bigIcon = 'zuwa_zuwa_dance';
+            } else if (
+                L.worldId === 'wrld_74970324-58e8-4239-a17b-2c59dfdf00db' ||
+                L.worldId === 'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445' ||
+                L.worldId === 'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e'
+            ) {
+                appId = '968292722391785512';
+                bigIcon = 'ls_media';
+            } else if (
+                L.worldId === 'wrld_266523e8-9161-40da-acd0-6bd82e075833'
+            ) {
+                appId = '1095440531821170820';
+                bigIcon = 'movie_and_chill';
+            }
             if (this.nowPlaying.name) {
                 L.worldName = this.nowPlaying.name;
             }
@@ -13420,9 +13532,8 @@ speechSynthesis.getVoices();
                         }
                     } else {
                         // try fetch from local avatar history
-                        var avatar = await database.getCachedAvatarById(
-                            objectId
-                        );
+                        var avatar =
+                            await database.getCachedAvatarById(objectId);
                         if (avatar) {
                             ctx.ref = avatar;
                             ctx.name = avatar.name;
@@ -13697,7 +13808,7 @@ speechSynthesis.getVoices();
             sqlValues.unshift(row);
         }
         database.setFriendLogCurrentArray(sqlValues);
-        configRepository.setBool(`friendLogInit_${userId}`, true);
+        await configRepository.setBool(`friendLogInit_${userId}`, true);
         this.friendLogInitStatus = true;
     };
 
@@ -13709,7 +13820,7 @@ speechSynthesis.getVoices();
         );
         database.addFriendLogHistoryArray(this.friendLogTable.data);
         VRCXStorage.Remove(`${userId}_friendLogTable`);
-        configRepository.setBool(`friendLogInit_${userId}`, true);
+        await configRepository.setBool(`friendLogInit_${userId}`, true);
     };
 
     $app.methods.getFriendLog = async function () {
@@ -14183,48 +14294,55 @@ speechSynthesis.getVoices();
     };
 
     // Save Table Filters
-    $app.methods.saveTableFilters = function () {
-        configRepository.setString(
+    $app.methods.saveTableFilters = async function () {
+        await configRepository.setString(
             'VRCX_friendLogTableFilters',
             JSON.stringify(this.friendLogTable.filters[0].value)
         );
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_playerModerationTableFilters',
             JSON.stringify(this.playerModerationTable.filters[0].value)
         );
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_notificationTableFilters',
             JSON.stringify(this.notificationTable.filters[0].value)
         );
     };
+
     $app.data.feedTable.filter = JSON.parse(
-        configRepository.getString('VRCX_feedTableFilters', '[]')
+        await configRepository.getString('VRCX_feedTableFilters', '[]')
     );
-    $app.data.feedTable.vip = configRepository.getBool(
+    $app.data.feedTable.vip = await configRepository.getBool(
         'VRCX_feedTableVIPFilter',
         false
     );
     $app.data.gameLogTable.filter = JSON.parse(
-        configRepository.getString('VRCX_gameLogTableFilters', '[]')
+        await configRepository.getString('VRCX_gameLogTableFilters', '[]')
     );
     $app.data.friendLogTable.filters[0].value = JSON.parse(
-        configRepository.getString('VRCX_friendLogTableFilters', '[]')
+        await configRepository.getString('VRCX_friendLogTableFilters', '[]')
     );
     $app.data.playerModerationTable.filters[0].value = JSON.parse(
-        configRepository.getString('VRCX_playerModerationTableFilters', '[]')
+        await configRepository.getString(
+            'VRCX_playerModerationTableFilters',
+            '[]'
+        )
     );
     $app.data.notificationTable.filters[0].value = JSON.parse(
-        configRepository.getString('VRCX_notificationTableFilters', '[]')
+        await configRepository.getString('VRCX_notificationTableFilters', '[]')
     );
     $app.data.photonEventTableTypeFilter = JSON.parse(
-        configRepository.getString('VRCX_photonEventTypeFilter', '[]')
+        await configRepository.getString('VRCX_photonEventTypeFilter', '[]')
     );
     $app.data.photonEventTable.filters[1].value =
         $app.data.photonEventTableTypeFilter;
     $app.data.photonEventTablePrevious.filters[1].value =
         $app.data.photonEventTableTypeFilter;
     $app.data.photonEventTableTypeOverlayFilter = JSON.parse(
-        configRepository.getString('VRCX_photonEventTypeOverlayFilter', '[]')
+        await configRepository.getString(
+            'VRCX_photonEventTypeOverlayFilter',
+            '[]'
+        )
     );
 
     // #endregion
@@ -14343,137 +14461,161 @@ speechSynthesis.getVoices();
         layout: 'table'
     };
     $app.data.visits = 0;
-    $app.data.openVR = configRepository.getBool('openVR', false);
-    $app.data.openVRAlways = configRepository.getBool('openVRAlways', false);
-    $app.data.overlaybutton = configRepository.getBool(
+    $app.data.openVR = await configRepository.getBool('openVR', false);
+    $app.data.openVRAlways = await configRepository.getBool(
+        'openVRAlways',
+        false
+    );
+    $app.data.overlaybutton = await configRepository.getBool(
         'VRCX_overlaybutton',
         false
     );
-    $app.data.overlayHand = configRepository.getInt('VRCX_overlayHand', 0);
-    $app.data.hidePrivateFromFeed = configRepository.getBool(
+    $app.data.overlayHand = await configRepository.getInt(
+        'VRCX_overlayHand',
+        0
+    );
+    $app.data.hidePrivateFromFeed = await configRepository.getBool(
         'VRCX_hidePrivateFromFeed',
         false
     );
-    $app.data.hideDevicesFromFeed = configRepository.getBool(
+    $app.data.hideDevicesFromFeed = await configRepository.getBool(
         'VRCX_hideDevicesFromFeed',
         false
     );
-    $app.data.hideCpuUsageFromFeed = configRepository.getBool(
+    $app.data.hideCpuUsageFromFeed = await configRepository.getBool(
         'VRCX_hideCpuUsageFromFeed',
         false
     );
-    $app.data.hideUptimeFromFeed = configRepository.getBool(
+    $app.data.hideUptimeFromFeed = await configRepository.getBool(
         'VRCX_hideUptimeFromFeed',
         false
     );
-    $app.data.pcUptimeOnFeed = configRepository.getBool(
+    $app.data.pcUptimeOnFeed = await configRepository.getBool(
         'VRCX_pcUptimeOnFeed',
         false
     );
-    $app.data.overlayNotifications = configRepository.getBool(
+    $app.data.overlayNotifications = await configRepository.getBool(
         'VRCX_overlayNotifications',
         true
     );
-    $app.data.overlayWrist = configRepository.getBool(
+    $app.data.overlayWrist = await configRepository.getBool(
         'VRCX_overlayWrist',
         false
     );
-    $app.data.xsNotifications = configRepository.getBool(
+    $app.data.xsNotifications = await configRepository.getBool(
         'VRCX_xsNotifications',
         true
     );
-    $app.data.imageNotifications = configRepository.getBool(
+    $app.data.imageNotifications = await configRepository.getBool(
         'VRCX_imageNotifications',
         true
     );
-    $app.data.desktopToast = configRepository.getString(
+    $app.data.desktopToast = await configRepository.getString(
         'VRCX_desktopToast',
         'Never'
     );
-    $app.data.afkDesktopToast = configRepository.getBool(
+    $app.data.afkDesktopToast = await configRepository.getBool(
         'VRCX_afkDesktopToast',
         false
     );
-    $app.data.minimalFeed = configRepository.getBool('VRCX_minimalFeed', false);
-    $app.data.displayVRCPlusIconsAsAvatar = configRepository.getBool(
+    $app.data.minimalFeed = await configRepository.getBool(
+        'VRCX_minimalFeed',
+        false
+    );
+    $app.data.displayVRCPlusIconsAsAvatar = await configRepository.getBool(
         'displayVRCPlusIconsAsAvatar',
         true
     );
-    $app.data.hideTooltips = configRepository.getBool(
+    $app.data.hideTooltips = await configRepository.getBool(
         'VRCX_hideTooltips',
         false
     );
-    $app.data.notificationTTS = configRepository.getString(
+    $app.data.notificationTTS = await configRepository.getString(
         'VRCX_notificationTTS',
         'Never'
     );
-    $app.data.notificationTTSVoice = configRepository.getString(
+    $app.data.notificationTTSVoice = await configRepository.getString(
         'VRCX_notificationTTSVoice',
         '0'
     );
-    $app.data.notificationTimeout = configRepository.getString(
+    $app.data.notificationTimeout = await configRepository.getString(
         'VRCX_notificationTimeout',
         '3000'
     );
-    $app.data.autoSweepVRChatCache = configRepository.getBool(
+    $app.data.autoSweepVRChatCache = await configRepository.getBool(
         'VRCX_autoSweepVRChatCache',
         false
     );
-    $app.data.relaunchVRChatAfterCrash = configRepository.getBool(
+    $app.data.relaunchVRChatAfterCrash = await configRepository.getBool(
         'VRCX_relaunchVRChatAfterCrash',
         false
     );
-    $app.data.vrcQuitFix = configRepository.getBool('VRCX_vrcQuitFix', true);
-    $app.data.vrBackgroundEnabled = configRepository.getBool(
+    $app.data.vrcQuitFix = await configRepository.getBool(
+        'VRCX_vrcQuitFix',
+        true
+    );
+    $app.data.vrBackgroundEnabled = await configRepository.getBool(
         'VRCX_vrBackgroundEnabled',
         false
     );
-    $app.data.asideWidth = configRepository.getInt('VRCX_sidePanelWidth', 300);
-    if (configRepository.getInt('VRCX_asidewidth')) {
+    $app.data.asideWidth = await configRepository.getInt(
+        'VRCX_sidePanelWidth',
+        300
+    );
+    if (await configRepository.getInt('VRCX_asidewidth')) {
         // migrate to new defaults
-        $app.data.asideWidth = configRepository.getInt('VRCX_asidewidth');
+        $app.data.asideWidth = await configRepository.getInt('VRCX_asidewidth');
         if ($app.data.asideWidth < 300) {
             $app.data.asideWidth = 300;
         }
-        configRepository.setInt('VRCX_sidePanelWidth', $app.data.asideWidth);
-        configRepository.remove('VRCX_asidewidth');
+        await configRepository.setInt(
+            'VRCX_sidePanelWidth',
+            $app.data.asideWidth
+        );
+        await configRepository.remove('VRCX_asidewidth');
     }
-    $app.data.autoUpdateVRCX = configRepository.getString(
+    $app.data.autoUpdateVRCX = await configRepository.getString(
         'VRCX_autoUpdateVRCX',
         'Auto Download'
     );
-    $app.data.branch = configRepository.getString('VRCX_branch', 'Stable');
-    $app.data.maxTableSize = configRepository.getInt('VRCX_maxTableSize', 1000);
+    $app.data.branch = await configRepository.getString(
+        'VRCX_branch',
+        'Stable'
+    );
+    $app.data.maxTableSize = await configRepository.getInt(
+        'VRCX_maxTableSize',
+        1000
+    );
     if ($app.data.maxTableSize > 10000) {
         $app.data.maxTableSize = 1000;
     }
     database.setmaxTableSize($app.data.maxTableSize);
-    $app.data.photonLobbyTimeoutThreshold = configRepository.getString(
+    $app.data.photonLobbyTimeoutThreshold = await configRepository.getString(
         'VRCX_photonLobbyTimeoutThreshold',
         6000
     );
-    $app.data.clearVRCXCacheFrequency = configRepository.getString(
+    $app.data.clearVRCXCacheFrequency = await configRepository.getString(
         'VRCX_clearVRCXCacheFrequency',
         '172800'
     );
-    $app.data.avatarRemoteDatabase = configRepository.getBool(
+    $app.data.avatarRemoteDatabase = await configRepository.getBool(
         'VRCX_avatarRemoteDatabase',
         true
     );
     $app.data.avatarRemoteDatabaseProvider = '';
     $app.data.avatarRemoteDatabaseProviderList = JSON.parse(
-        configRepository.getString(
+        await configRepository.getString(
             'VRCX_avatarRemoteDatabaseProviderList',
             '[ "https://avtr.just-h.party/vrcx_search.php" ]'
         )
     );
-    $app.data.pendingOfflineDelay = configRepository.getInt(
+    $app.data.pendingOfflineDelay = await configRepository.getInt(
         'VRCX_pendingOfflineDelay',
         110000
     );
-    if (configRepository.getString('VRCX_avatarRemoteDatabaseProvider')) {
+    if (await configRepository.getString('VRCX_avatarRemoteDatabaseProvider')) {
         // move existing provider to new list
-        var avatarRemoteDatabaseProvider = configRepository.getString(
+        var avatarRemoteDatabaseProvider = await configRepository.getString(
             'VRCX_avatarRemoteDatabaseProvider'
         );
         if (
@@ -14485,8 +14627,8 @@ speechSynthesis.getVoices();
                 avatarRemoteDatabaseProvider
             );
         }
-        configRepository.remove('VRCX_avatarRemoteDatabaseProvider');
-        configRepository.setString(
+        await configRepository.remove('VRCX_avatarRemoteDatabaseProvider');
+        await configRepository.setString(
             'VRCX_avatarRemoteDatabaseProviderList',
             JSON.stringify($app.data.avatarRemoteDatabaseProviderList)
         );
@@ -14495,92 +14637,107 @@ speechSynthesis.getVoices();
         $app.data.avatarRemoteDatabaseProvider =
             $app.data.avatarRemoteDatabaseProviderList[0];
     }
-    $app.data.sortFavorites = configRepository.getBool(
+    $app.data.sortFavorites = await configRepository.getBool(
         'VRCX_sortFavorites',
         true
     );
-    $app.data.randomUserColours = configRepository.getBool(
+    $app.data.randomUserColours = await configRepository.getBool(
         'VRCX_randomUserColours',
         false
     );
-    $app.data.hideUserNotes = configRepository.getBool(
+    $app.data.hideUserNotes = await configRepository.getBool(
         'VRCX_hideUserNotes',
         false
     );
-    $app.data.hideUserMemos = configRepository.getBool(
+    $app.data.hideUserMemos = await configRepository.getBool(
         'VRCX_hideUserMemos',
         false
     );
-    $app.methods.saveOpenVROption = function () {
-        configRepository.setBool('openVR', this.openVR);
-        configRepository.setBool('openVRAlways', this.openVRAlways);
-        configRepository.setBool('VRCX_overlaybutton', this.overlaybutton);
+    $app.methods.saveOpenVROption = async function () {
+        await configRepository.setBool('openVR', this.openVR);
+        await configRepository.setBool('openVRAlways', this.openVRAlways);
+        await configRepository.setBool(
+            'VRCX_overlaybutton',
+            this.overlaybutton
+        );
         this.overlayHand = parseInt(this.overlayHand, 10);
         if (isNaN(this.overlayHand)) {
             this.overlayHand = 0;
         }
-        configRepository.setInt('VRCX_overlayHand', this.overlayHand);
-        configRepository.setBool(
+        await configRepository.setInt('VRCX_overlayHand', this.overlayHand);
+        await configRepository.setBool(
             'VRCX_hidePrivateFromFeed',
             this.hidePrivateFromFeed
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_hideDevicesFromFeed',
             this.hideDevicesFromFeed
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_hideCpuUsageFromFeed',
             this.hideCpuUsageFromFeed
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_hideUptimeFromFeed',
             this.hideUptimeFromFeed
         );
-        configRepository.setBool('VRCX_pcUptimeOnFeed', this.pcUptimeOnFeed);
-        configRepository.setBool(
+        await configRepository.setBool(
+            'VRCX_pcUptimeOnFeed',
+            this.pcUptimeOnFeed
+        );
+        await configRepository.setBool(
             'VRCX_overlayNotifications',
             this.overlayNotifications
         );
-        configRepository.setBool('VRCX_overlayWrist', this.overlayWrist);
-        configRepository.setBool('VRCX_xsNotifications', this.xsNotifications);
-        configRepository.setBool(
+        await configRepository.setBool('VRCX_overlayWrist', this.overlayWrist);
+        await configRepository.setBool(
+            'VRCX_xsNotifications',
+            this.xsNotifications
+        );
+        await configRepository.setBool(
             'VRCX_imageNotifications',
             this.imageNotifications
         );
-        configRepository.setString('VRCX_desktopToast', this.desktopToast);
-        configRepository.setBool('VRCX_afkDesktopToast', this.afkDesktopToast);
-        configRepository.setBool('VRCX_minimalFeed', this.minimalFeed);
-        configRepository.setBool(
+        await configRepository.setString(
+            'VRCX_desktopToast',
+            this.desktopToast
+        );
+        await configRepository.setBool(
+            'VRCX_afkDesktopToast',
+            this.afkDesktopToast
+        );
+        await configRepository.setBool('VRCX_minimalFeed', this.minimalFeed);
+        await configRepository.setBool(
             'displayVRCPlusIconsAsAvatar',
             this.displayVRCPlusIconsAsAvatar
         );
-        configRepository.setBool('VRCX_hideTooltips', this.hideTooltips);
-        configRepository.setBool(
+        await configRepository.setBool('VRCX_hideTooltips', this.hideTooltips);
+        await configRepository.setBool(
             'VRCX_autoSweepVRChatCache',
             this.autoSweepVRChatCache
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_relaunchVRChatAfterCrash',
             this.relaunchVRChatAfterCrash
         );
-        configRepository.setBool('VRCX_vrcQuitFix', this.vrcQuitFix);
-        configRepository.setBool(
+        await configRepository.setBool('VRCX_vrcQuitFix', this.vrcQuitFix);
+        await configRepository.setBool(
             'VRCX_vrBackgroundEnabled',
             this.vrBackgroundEnabled
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_avatarRemoteDatabase',
             this.avatarRemoteDatabase
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_instanceUsersSortAlphabetical',
             this.instanceUsersSortAlphabetical
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_randomUserColours',
             this.randomUserColours
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_udonExceptionLogging',
             this.udonExceptionLogging
         );
@@ -14590,30 +14747,40 @@ speechSynthesis.getVoices();
         AppApi.ExecuteVrOverlayFunction('notyClear', '');
         this.updateOpenVR();
     };
-    $app.methods.saveSortFavoritesOption = function () {
+    $app.methods.saveSortFavoritesOption = async function () {
         this.getLocalWorldFavorites();
-        configRepository.setBool('VRCX_sortFavorites', this.sortFavorites);
+        await configRepository.setBool(
+            'VRCX_sortFavorites',
+            this.sortFavorites
+        );
     };
-    $app.methods.saveUserDialogOption = function () {
-        configRepository.setBool('VRCX_hideUserNotes', this.hideUserNotes);
-        configRepository.setBool('VRCX_hideUserMemos', this.hideUserMemos);
+    $app.methods.saveUserDialogOption = async function () {
+        await configRepository.setBool(
+            'VRCX_hideUserNotes',
+            this.hideUserNotes
+        );
+        await configRepository.setBool(
+            'VRCX_hideUserMemos',
+            this.hideUserMemos
+        );
     };
     $app.data.TTSvoices = speechSynthesis.getVoices();
-    $app.methods.saveNotificationTTS = function () {
+    $app.methods.saveNotificationTTS = async function () {
         speechSynthesis.cancel();
         if (
-            configRepository.getString('VRCX_notificationTTS') === 'Never' &&
+            (await configRepository.getString('VRCX_notificationTTS')) ===
+                'Never' &&
             this.notificationTTS !== 'Never'
         ) {
             this.speak('Notification text-to-speech enabled');
         }
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_notificationTTS',
             this.notificationTTS
         );
         this.updateVRConfigVars();
     };
-    $app.data.themeMode = configRepository.getString(
+    $app.data.themeMode = await configRepository.getString(
         'VRCX_ThemeMode',
         'system'
     );
@@ -14626,18 +14793,18 @@ speechSynthesis.getVoices();
 
     window
         .matchMedia('(prefers-color-scheme: dark)')
-        .addEventListener('change', () => {
+        .addEventListener('change', async () => {
             if ($app.themeMode === 'system') {
-                $app.saveThemeMode();
+                await $app.saveThemeMode();
             }
         });
 
-    $app.methods.saveThemeMode = function () {
-        configRepository.setString('VRCX_ThemeMode', this.themeMode);
-        this.changeThemeMode();
+    $app.methods.saveThemeMode = async function () {
+        await configRepository.setString('VRCX_ThemeMode', this.themeMode);
+        await this.changeThemeMode();
     };
 
-    $app.methods.changeThemeMode = function () {
+    $app.methods.changeThemeMode = async function () {
         if (document.contains(document.getElementById('app-theme-style'))) {
             document.getElementById('app-theme-style').remove();
         }
@@ -14682,29 +14849,28 @@ speechSynthesis.getVoices();
         }
         document.head.appendChild($appThemeStyle);
         this.updateVRConfigVars();
-        this.updatetrustColor();
+        await this.updatetrustColor();
     };
 
-    $app.data.isStartAtWindowsStartup = configRepository.getBool(
+    $app.data.isStartAtWindowsStartup = await configRepository.getBool(
         'VRCX_StartAtWindowsStartup',
         false
     );
-    $app.data.isStartAsMinimizedState = false;
-    $app.data.isCloseToTray = false;
-    VRCXStorage.Get('VRCX_StartAsMinimizedState').then((result) => {
-        $app.isStartAsMinimizedState = result === 'true';
-    });
-    VRCXStorage.Get('VRCX_CloseToTray').then((result) => {
-        $app.isCloseToTray = result === 'true';
-    });
-    if (configRepository.getBool('VRCX_CloseToTray')) {
+    $app.data.isStartAsMinimizedState =
+        (await VRCXStorage.Get('VRCX_StartAsMinimizedState')) === 'true';
+    $app.data.isCloseToTray =
+        (await VRCXStorage.Get('VRCX_CloseToTray')) === 'true';
+    if (await configRepository.getBool('VRCX_CloseToTray')) {
         // move back to JSON
-        $app.data.isCloseToTray = configRepository.getBool('VRCX_CloseToTray');
+        $app.data.isCloseToTray =
+            await configRepository.getBool('VRCX_CloseToTray');
         VRCXStorage.Set('VRCX_CloseToTray', $app.data.isCloseToTray.toString());
-        configRepository.remove('VRCX_CloseToTray');
+        await configRepository.remove('VRCX_CloseToTray');
     }
-    $app.methods.saveVRCXWindowOption = function () {
-        configRepository.setBool(
+    $app.data.disableWorldDatabase =
+        (await VRCXStorage.Get('VRCX_DisableWorldDatabase')) === 'true';
+    $app.methods.saveVRCXWindowOption = async function () {
+        await configRepository.setBool(
             'VRCX_StartAtWindowsStartup',
             this.isStartAtWindowsStartup
         );
@@ -14713,54 +14879,61 @@ speechSynthesis.getVoices();
             this.isStartAsMinimizedState.toString()
         );
         VRCXStorage.Set('VRCX_CloseToTray', this.isCloseToTray.toString());
+        VRCXStorage.Set(
+            'VRCX_DisableWorldDatabase',
+            this.disableWorldDatabase.toString()
+        );
         AppApi.SetStartup(this.isStartAtWindowsStartup);
     };
-    $app.data.photonEventOverlay = configRepository.getBool(
+    $app.data.photonEventOverlay = await configRepository.getBool(
         'VRCX_PhotonEventOverlay',
         false
     );
-    $app.data.timeoutHudOverlay = configRepository.getBool(
+    $app.data.timeoutHudOverlay = await configRepository.getBool(
         'VRCX_TimeoutHudOverlay',
         false
     );
-    $app.data.timeoutHudOverlayFilter = configRepository.getString(
+    $app.data.timeoutHudOverlayFilter = await configRepository.getString(
         'VRCX_TimeoutHudOverlayFilter',
         'Everyone'
     );
-    $app.data.photonEventOverlayFilter = configRepository.getString(
+    $app.data.photonEventOverlayFilter = await configRepository.getString(
         'VRCX_PhotonEventOverlayFilter',
         'Everyone'
     );
     $app.data.photonOverlayMessageTimeout = Number(
-        configRepository.getString('VRCX_photonOverlayMessageTimeout', 6000)
+        await configRepository.getString(
+            'VRCX_photonOverlayMessageTimeout',
+            6000
+        )
     );
     $app.data.photonLoggingEnabled = false;
-    $app.data.gameLogDisabled = configRepository.getBool(
+    $app.data.gameLogDisabled = await configRepository.getBool(
         'VRCX_gameLogDisabled',
         false
     );
-    $app.data.udonExceptionLogging = configRepository.getBool(
+    $app.data.udonExceptionLogging = await configRepository.getBool(
         'VRCX_udonExceptionLogging',
         false
     );
-    $app.data.instanceUsersSortAlphabetical = configRepository.getBool(
+    $app.data.instanceUsersSortAlphabetical = await configRepository.getBool(
         'VRCX_instanceUsersSortAlphabetical',
         false
     );
-    $app.methods.saveEventOverlay = function () {
-        configRepository.setBool(
+    $app.methods.saveEventOverlay = async function () {
+        await configRepository.setBool(
             'VRCX_PhotonEventOverlay',
             this.photonEventOverlay
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_TimeoutHudOverlay',
             this.timeoutHudOverlay
         );
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_TimeoutHudOverlayFilter',
             this.timeoutHudOverlayFilter
         );
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_PhotonEventOverlayFilter',
             this.photonEventOverlayFilter
         );
@@ -14770,111 +14943,138 @@ speechSynthesis.getVoices();
         this.updateOpenVR();
         this.updateVRConfigVars();
     };
-    $app.data.logResourceLoad = configRepository.getBool(
+    $app.data.logResourceLoad = await configRepository.getBool(
         'VRCX_logResourceLoad',
         false
     );
-    $app.methods.saveGameLogOptions = function () {
-        configRepository.setBool('VRCX_logResourceLoad', this.logResourceLoad);
+    $app.methods.saveGameLogOptions = async function () {
+        await configRepository.setBool(
+            'VRCX_logResourceLoad',
+            this.logResourceLoad
+        );
     };
-    $app.data.autoStateChange = configRepository.getString(
+    $app.data.autoStateChange = await configRepository.getString(
         'VRCX_autoStateChange',
         'Off'
     );
-    $app.methods.saveAutomationOptions = function () {
-        configRepository.setString(
+    $app.methods.saveAutomationOptions = async function () {
+        await configRepository.setString(
             'VRCX_autoStateChange',
             this.autoStateChange
         );
     };
-    $app.data.vrcRegistryAutoBackup = configRepository.getBool(
+    $app.data.vrcRegistryAutoBackup = await configRepository.getBool(
         'VRCX_vrcRegistryAutoBackup',
         true
     );
-    $app.methods.saveVrcRegistryAutoBackup = function () {
-        configRepository.setBool(
+    $app.methods.saveVrcRegistryAutoBackup = async function () {
+        await configRepository.setBool(
             'VRCX_vrcRegistryAutoBackup',
             this.vrcRegistryAutoBackup
         );
     };
-    $app.data.orderFriendsGroup0 = configRepository.getBool(
+    $app.data.orderFriendsGroup0 = await configRepository.getBool(
         'orderFriendGroup0',
         true
     );
-    $app.data.orderFriendsGroup1 = configRepository.getBool(
+    $app.data.orderFriendsGroup1 = await configRepository.getBool(
         'orderFriendGroup1',
         true
     );
-    $app.data.orderFriendsGroup2 = configRepository.getBool(
+    $app.data.orderFriendsGroup2 = await configRepository.getBool(
         'orderFriendGroup2',
         true
     );
-    $app.data.orderFriendsGroup3 = configRepository.getBool(
+    $app.data.orderFriendsGroup3 = await configRepository.getBool(
         'orderFriendGroup3',
         true
     );
-    $app.data.orderFriendsGroupPrivate = configRepository.getBool(
+    $app.data.orderFriendsGroupPrivate = await configRepository.getBool(
         'orderFriendGroupPrivate',
         false
     );
-    $app.data.orderFriendsGroupStatus = configRepository.getBool(
+    $app.data.orderFriendsGroupStatus = await configRepository.getBool(
         'orderFriendsGroupStatus',
         false
     );
-    $app.data.orderFriendsGroupGPS = configRepository.getBool(
+    $app.data.orderFriendsGroupGPS = await configRepository.getBool(
         'orderFriendGroupGPS',
         true
     );
-    $app.methods.saveOrderFriendGroup = function () {
-        configRepository.setBool('orderFriendGroup0', this.orderFriendsGroup0);
-        configRepository.setBool('orderFriendGroup1', this.orderFriendsGroup1);
-        configRepository.setBool('orderFriendGroup2', this.orderFriendsGroup2);
-        configRepository.setBool('orderFriendGroup3', this.orderFriendsGroup3);
-        configRepository.setBool(
+    $app.methods.saveOrderFriendGroup = async function () {
+        await configRepository.setBool(
+            'orderFriendGroup0',
+            this.orderFriendsGroup0
+        );
+        await configRepository.setBool(
+            'orderFriendGroup1',
+            this.orderFriendsGroup1
+        );
+        await configRepository.setBool(
+            'orderFriendGroup2',
+            this.orderFriendsGroup2
+        );
+        await configRepository.setBool(
+            'orderFriendGroup3',
+            this.orderFriendsGroup3
+        );
+        await configRepository.setBool(
             'orderFriendGroupPrivate',
             this.orderFriendsGroupPrivate
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'orderFriendsGroupStatus',
             this.orderFriendsGroupStatus
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'orderFriendGroupGPS',
             this.orderFriendsGroupGPS
         );
         this.sortFriendsGroup0 = true;
         this.sortFriendsGroup1 = true;
     };
-    $app.data.discordActive = configRepository.getBool('discordActive', false);
-    $app.data.discordInstance = configRepository.getBool(
+    $app.data.discordActive = await configRepository.getBool(
+        'discordActive',
+        false
+    );
+    $app.data.discordInstance = await configRepository.getBool(
         'discordInstance',
         true
     );
-    $app.data.discordJoinButton = configRepository.getBool(
+    $app.data.discordJoinButton = await configRepository.getBool(
         'discordJoinButton',
         false
     );
-    $app.data.discordHideInvite = configRepository.getBool(
+    $app.data.discordHideInvite = await configRepository.getBool(
         'discordHideInvite',
         true
     );
-    $app.data.discordHideImage = configRepository.getBool(
+    $app.data.discordHideImage = await configRepository.getBool(
         'discordHideImage',
         false
     );
-    $app.methods.saveDiscordOption = function () {
-        configRepository.setBool('discordActive', this.discordActive);
-        configRepository.setBool('discordInstance', this.discordInstance);
-        configRepository.setBool('discordJoinButton', this.discordJoinButton);
-        configRepository.setBool('discordHideInvite', this.discordHideInvite);
-        configRepository.setBool('discordHideImage', this.discordHideImage);
+    $app.methods.saveDiscordOption = async function () {
+        await configRepository.setBool('discordActive', this.discordActive);
+        await configRepository.setBool('discordInstance', this.discordInstance);
+        await configRepository.setBool(
+            'discordJoinButton',
+            this.discordJoinButton
+        );
+        await configRepository.setBool(
+            'discordHideInvite',
+            this.discordHideInvite
+        );
+        await configRepository.setBool(
+            'discordHideImage',
+            this.discordHideImage
+        );
         this.lastLocation$.tag = '';
         this.nextDiscordUpdate = 7;
         this.updateDiscord();
     };
 
     // setting defaults
-    var sharedFeedFilters = {
+    $app.data.sharedFeedFiltersDefaults = {
         noty: {
             Location: 'Off',
             OnPlayerJoined: 'VIP',
@@ -14952,12 +15152,15 @@ speechSynthesis.getVoices();
             Unmuted: 'On'
         }
     };
-    $app.data.sharedFeedFilters = JSON.parse(
-        configRepository.getString(
-            'sharedFeedFilters',
-            JSON.stringify(sharedFeedFilters)
-        )
-    );
+    $app.data.sharedFeedFilters = $app.data.sharedFeedFiltersDefaults;
+    if (await configRepository.getString('sharedFeedFilters')) {
+        $app.data.sharedFeedFilters = JSON.parse(
+            await configRepository.getString(
+                'sharedFeedFilters',
+                JSON.stringify($app.data.sharedFeedFiltersDefaults)
+            )
+        );
+    }
     if (!$app.data.sharedFeedFilters.noty.Blocked) {
         $app.data.sharedFeedFilters.noty.Blocked = 'Off';
         $app.data.sharedFeedFilters.noty.Unblocked = 'Off';
@@ -14988,7 +15191,7 @@ speechSynthesis.getVoices();
     }
 
     $app.data.trustColor = JSON.parse(
-        configRepository.getString(
+        await configRepository.getString(
             'VRCX_trustColor',
             JSON.stringify({
                 untrusted: '#CCCCCC',
@@ -15002,15 +15205,15 @@ speechSynthesis.getVoices();
         )
     );
 
-    $app.methods.updatetrustColor = function () {
+    $app.methods.updatetrustColor = async function () {
         if (typeof API.currentUser?.id === 'undefined') {
             return;
         }
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_randomUserColours',
             this.randomUserColours
         );
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_trustColor',
             JSON.stringify(this.trustColor)
         );
@@ -15025,12 +15228,12 @@ speechSynthesis.getVoices();
                 API.applyUserTrustLevel(ref);
             });
         }
-        this.updatetrustColorClasses();
+        await this.updatetrustColorClasses();
     };
 
-    $app.methods.updatetrustColorClasses = function () {
+    $app.methods.updatetrustColorClasses = async function () {
         var trustColor = JSON.parse(
-            configRepository.getString(
+            await configRepository.getString(
                 'VRCX_trustColor',
                 JSON.stringify({
                     untrusted: '#CCCCCC',
@@ -15056,11 +15259,9 @@ speechSynthesis.getVoices();
         style.innerHTML = newCSS;
         document.getElementsByTagName('head')[0].appendChild(style);
     };
-    $app.methods.updatetrustColorClasses();
+    await $app.methods.updatetrustColorClasses();
 
     $app.methods.saveSharedFeedFilters = function () {
-        this.notyFeedFiltersDialog.visible = false;
-        this.wristFeedFiltersDialog.visible = false;
         configRepository.setString(
             'sharedFeedFilters',
             JSON.stringify(this.sharedFeedFilters)
@@ -15068,54 +15269,70 @@ speechSynthesis.getVoices();
         this.updateSharedFeed(true);
     };
 
-    $app.methods.cancelSharedFeedFilters = function () {
-        this.notyFeedFiltersDialog.visible = false;
-        this.wristFeedFiltersDialog.visible = false;
-        this.sharedFeedFilters = JSON.parse(
-            configRepository.getString('sharedFeedFilters')
-        );
+    $app.methods.resetSharedFeedFilters = async function () {
+        if (await configRepository.getString('sharedFeedFilters')) {
+            this.sharedFeedFilters = JSON.parse(
+                await configRepository.getString(
+                    'sharedFeedFilters',
+                    JSON.stringify(this.sharedFeedFiltersDefaults)
+                )
+            );
+        } else {
+            this.sharedFeedFilters = this.sharedFeedFiltersDefaults;
+        }
     };
 
-    $app.data.notificationPosition = configRepository.getString(
+    $app.data.notificationPosition = await configRepository.getString(
         'VRCX_notificationPosition',
         'topCenter'
     );
-    $app.methods.changeNotificationPosition = function () {
-        configRepository.setString(
+    $app.methods.changeNotificationPosition = async function () {
+        await configRepository.setString(
             'VRCX_notificationPosition',
             this.notificationPosition
         );
         this.updateVRConfigVars();
     };
 
-    $app.data.youTubeApi = configRepository.getBool('VRCX_youtubeAPI', false);
-    $app.data.youTubeApiKey = configRepository.getString(
+    $app.data.youTubeApi = await configRepository.getBool(
+        'VRCX_youtubeAPI',
+        false
+    );
+    $app.data.youTubeApiKey = await configRepository.getString(
         'VRCX_youtubeAPIKey',
         ''
     );
 
-    $app.data.progressPie = configRepository.getBool('VRCX_progressPie', false);
-    $app.data.progressPieFilter = configRepository.getBool(
+    $app.data.progressPie = await configRepository.getBool(
+        'VRCX_progressPie',
+        false
+    );
+    $app.data.progressPieFilter = await configRepository.getBool(
         'VRCX_progressPieFilter',
         true
     );
 
-    $app.data.screenshotHelper = configRepository.getBool(
+    $app.data.screenshotHelper = await configRepository.getBool(
         'VRCX_screenshotHelper',
         true
     );
 
-    $app.data.screenshotHelperModifyFilename = configRepository.getBool(
+    $app.data.screenshotHelperModifyFilename = await configRepository.getBool(
         'VRCX_screenshotHelperModifyFilename',
         false
     );
 
-    $app.data.enableAppLauncher = configRepository.getBool(
+    $app.data.screenshotHelperCopyToClipboard = await configRepository.getBool(
+        'VRCX_screenshotHelperCopyToClipboard',
+        false
+    );
+
+    $app.data.enableAppLauncher = await configRepository.getBool(
         'VRCX_enableAppLauncher',
         true
     );
 
-    $app.data.enableAppLauncherAutoClose = configRepository.getBool(
+    $app.data.enableAppLauncherAutoClose = await configRepository.getBool(
         'VRCX_enableAppLauncherAutoClose',
         true
     );
@@ -15151,12 +15368,12 @@ speechSynthesis.getVoices();
             'wrld_dd6d2888-dbdc-47c2-bc98-3d631b2acd7c',
             'wrld_52bdcdab-11cd-4325-9655-0fb120846945',
             'wrld_2d40da63-8f1f-4011-8a9e-414eb8530acd',
-            'wrld_1b68f7a8-8aea-4900-b7a2-3fc4139ac817',
             'wrld_10e5e467-fc65-42ed-8957-f02cace1398c',
-            'wrld_791ebf58-54ce-4d3a-a0a0-39f10e1b20b2',
-            'wrld_86a09fce-a34e-4deb-81be-53c843f97e98',
+            'wrld_04899f23-e182-4a8d-b2c7-2c74c7c15534',
             'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e',
-            'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445'
+            'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445',
+            'wrld_74970324-58e8-4239-a17b-2c59dfdf00db',
+            'wrld_266523e8-9161-40da-acd0-6bd82e075833'
         ];
         var L = API.parseLocation(location);
         if (rpcWorlds.includes(L.worldId)) {
@@ -15294,9 +15511,9 @@ speechSynthesis.getVoices();
         return voices[this.notificationTTSVoice].name;
     };
 
-    $app.methods.changeTTSVoice = function (index) {
+    $app.methods.changeTTSVoice = async function (index) {
         this.notificationTTSVoice = index;
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_notificationTTSVoice',
             this.notificationTTSVoice
         );
@@ -15624,7 +15841,7 @@ speechSynthesis.getVoices();
                 inputErrorMessage: $t(
                     'prompt.notification_timeout.input_error'
                 ),
-                callback: (action, instance) => {
+                callback: async (action, instance) => {
                     if (
                         action === 'confirm' &&
                         instance.inputValue &&
@@ -15633,7 +15850,7 @@ speechSynthesis.getVoices();
                         this.notificationTimeout = Math.trunc(
                             Number(instance.inputValue) * 1000
                         );
-                        configRepository.setString(
+                        await configRepository.setString(
                             'VRCX_notificationTimeout',
                             this.notificationTimeout
                         );
@@ -15657,7 +15874,7 @@ speechSynthesis.getVoices();
                 inputErrorMessage: $t(
                     'prompt.overlay_message_timeout.input_error'
                 ),
-                callback: (action, instance) => {
+                callback: async (action, instance) => {
                     if (
                         action === 'confirm' &&
                         instance.inputValue &&
@@ -15666,7 +15883,7 @@ speechSynthesis.getVoices();
                         this.photonOverlayMessageTimeout = Math.trunc(
                             Number(instance.inputValue) * 1000
                         );
-                        configRepository.setString(
+                        await configRepository.setString(
                             'VRCX_photonOverlayMessageTimeout',
                             this.photonOverlayMessageTimeout
                         );
@@ -15956,13 +16173,13 @@ speechSynthesis.getVoices();
                 inputValue: this.maxTableSize,
                 inputPattern: /\d+$/,
                 inputErrorMessage: $t('prompt.change_table_size.input_error'),
-                callback: (action, instance) => {
+                callback: async (action, instance) => {
                     if (action === 'confirm' && instance.inputValue) {
                         if (instance.inputValue > 10000) {
                             instance.inputValue = 10000;
                         }
                         this.maxTableSize = instance.inputValue;
-                        configRepository.setString(
+                        await configRepository.setString(
                             'VRCX_maxTableSize',
                             this.maxTableSize
                         );
@@ -15975,14 +16192,14 @@ speechSynthesis.getVoices();
         );
     };
 
-    $app.methods.setTablePageSize = function (pageSize) {
+    $app.methods.setTablePageSize = async function (pageSize) {
         this.tablePageSize = pageSize;
         this.feedTable.pageSize = pageSize;
         this.gameLogTable.pageSize = pageSize;
         this.friendLogTable.pageSize = pageSize;
         this.playerModerationTable.pageSize = pageSize;
         this.notificationTable.pageSize = pageSize;
-        configRepository.setInt('VRCX_tablePageSize', pageSize);
+        await configRepository.setInt('VRCX_tablePageSize', pageSize);
     };
 
     $app.methods.promptPhotonLobbyTimeoutThreshold = function () {
@@ -15998,7 +16215,7 @@ speechSynthesis.getVoices();
                 inputErrorMessage: $t(
                     'prompt.photon_lobby_timeout.input_error'
                 ),
-                callback: (action, instance) => {
+                callback: async (action, instance) => {
                     if (
                         action === 'confirm' &&
                         instance.inputValue &&
@@ -16007,7 +16224,7 @@ speechSynthesis.getVoices();
                         this.photonLobbyTimeoutThreshold = Math.trunc(
                             Number(instance.inputValue) * 1000
                         );
-                        configRepository.setString(
+                        await configRepository.setString(
                             'VRCX_photonLobbyTimeoutThreshold',
                             this.photonLobbyTimeoutThreshold
                         );
@@ -16028,7 +16245,7 @@ speechSynthesis.getVoices();
                 inputValue: this.clearVRCXCacheFrequency / 3600 / 2,
                 inputPattern: /\d+$/,
                 inputErrorMessage: $t('prompt.auto_clear_cache.input_error'),
-                callback: (action, instance) => {
+                callback: async (action, instance) => {
                     if (
                         action === 'confirm' &&
                         instance.inputValue &&
@@ -16037,7 +16254,7 @@ speechSynthesis.getVoices();
                         this.clearVRCXCacheFrequency = Math.trunc(
                             Number(instance.inputValue) * 3600 * 2
                         );
-                        configRepository.setString(
+                        await configRepository.setString(
                             'VRCX_clearVRCXCacheFrequency',
                             this.clearVRCXCacheFrequency
                         );
@@ -16612,6 +16829,16 @@ speechSynthesis.getVoices();
                                 D.isShowAvatar = true;
                             }
                         });
+                    } else {
+                        database
+                            .getUserStats(D.ref, inCurrentWorld)
+                            .then((ref1) => {
+                                if (ref1.userId === D.id) {
+                                    D.lastSeen = ref1.created_at;
+                                    D.joinCount = ref1.joinCount;
+                                    D.timeSpent = ref1.timeSpent;
+                                }
+                            });
                     }
                     API.getRepresentedGroup({ userId }).then((args1) => {
                         D.representedGroup = args1.json;
@@ -17322,8 +17549,7 @@ speechSynthesis.getVoices();
             },
             done: () => {
                 if (D.id === params.userId) {
-                    var array = Array.from(map.values());
-                    $app.userDialog.worlds = array;
+                    this.setUserDialogWorlds(D.id);
                 }
                 D.isWorldsLoading = false;
             }
@@ -18374,6 +18600,9 @@ speechSynthesis.getVoices();
         isBlocked: false,
         isQuestFallback: false,
         hasImposter: false,
+        isPC: false,
+        isQuest: false,
+        isIos: false,
         treeData: [],
         fileSize: '',
         inCache: false,
@@ -18432,6 +18661,9 @@ speechSynthesis.getVoices();
         D.cacheLocked = false;
         D.cachePath = '';
         D.isQuestFallback = false;
+        D.isPC = false;
+        D.isQuest = false;
+        D.isIos = false;
         D.hasImposter = false;
         D.isFavorite = API.cachedFavoritesByObjectId.has(avatarId);
         D.isBlocked = API.cachedAvatarModerations.has(avatarId);
@@ -18463,6 +18695,12 @@ speechSynthesis.getVoices();
                 if (/quest/.test(ref.tags)) {
                     D.isQuestFallback = true;
                 }
+                var { isPC, isQuest, isIos } = this.getAvailablePlatforms(
+                    args.ref.unityPackages
+                );
+                D.isPC = isPC;
+                D.isQuest = isQuest;
+                D.isIos = isIos;
                 var assetUrl = '';
                 for (let i = ref.unityPackages.length - 1; i > -1; i--) {
                     var unityPackage = ref.unityPackages[i];
@@ -18642,6 +18880,28 @@ speechSynthesis.getVoices();
                                         type: 'success'
                                     });
                                     D.visible = false;
+                                    return args;
+                                });
+                                break;
+                            case 'Delete Imposter':
+                                API.deleteImposter({
+                                    avatarId: D.id
+                                }).then((args) => {
+                                    this.$message({
+                                        message: 'Imposter deleted',
+                                        type: 'success'
+                                    });
+                                    return args;
+                                });
+                                break;
+                            case 'Create Imposter':
+                                API.createImposter({
+                                    avatarId: D.id
+                                }).then((args) => {
+                                    this.$message({
+                                        message: 'Imposter queued for creation',
+                                        type: 'success'
+                                    });
                                     return args;
                                 });
                                 break;
@@ -19323,46 +19583,46 @@ speechSynthesis.getVoices();
         D.url = this.getLaunchURL(L);
     };
 
-    $app.methods.saveNewInstanceDialog = function () {
-        configRepository.setString(
+    $app.methods.saveNewInstanceDialog = async function () {
+        await configRepository.setString(
             'instanceDialogAccessType',
             this.newInstanceDialog.accessType
         );
-        configRepository.setString(
+        await configRepository.setString(
             'instanceRegion',
             this.newInstanceDialog.region
         );
-        configRepository.setString(
+        await configRepository.setString(
             'instanceDialogInstanceName',
             this.newInstanceDialog.instanceName
         );
         if (this.newInstanceDialog.userId === API.currentUser.id) {
-            configRepository.setString('instanceDialogUserId', '');
+            await configRepository.setString('instanceDialogUserId', '');
         } else {
-            configRepository.setString(
+            await configRepository.setString(
                 'instanceDialogUserId',
                 this.newInstanceDialog.userId
             );
         }
-        configRepository.setString(
+        await configRepository.setString(
             'instanceDialogGroupId',
             this.newInstanceDialog.groupId
         );
-        configRepository.setString(
+        await configRepository.setString(
             'instanceDialogGroupAccessType',
             this.newInstanceDialog.groupAccessType
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'instanceDialogStrict',
             this.newInstanceDialog.strict
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'instanceDialogQueueEnabled',
             this.newInstanceDialog.queueEnabled
         );
     };
 
-    $app.methods.showNewInstanceDialog = function (tag) {
+    $app.methods.showNewInstanceDialog = async function (tag) {
         if (!this.isRealInstance(tag)) {
             return;
         }
@@ -19370,22 +19630,28 @@ speechSynthesis.getVoices();
         var D = this.newInstanceDialog;
         var L = API.parseLocation(tag);
         D.worldId = L.worldId;
-        D.accessType = configRepository.getString(
+        D.accessType = await configRepository.getString(
             'instanceDialogAccessType',
             'public'
         );
-        D.region = configRepository.getString('instanceRegion', 'US West');
-        D.instanceName = configRepository.getString(
+        D.region = await configRepository.getString(
+            'instanceRegion',
+            'US West'
+        );
+        D.instanceName = await configRepository.getString(
             'instanceDialogInstanceName',
             ''
         );
-        D.userId = configRepository.getString('instanceDialogUserId', '');
-        D.groupId = configRepository.getString('instanceDialogGroupId', '');
-        D.groupAccessType = configRepository.getString(
+        D.userId = await configRepository.getString('instanceDialogUserId', '');
+        D.groupId = await configRepository.getString(
+            'instanceDialogGroupId',
+            ''
+        );
+        D.groupAccessType = await configRepository.getString(
             'instanceDialogGroupAccessType',
             'plus'
         );
-        D.queueEnabled = configRepository.getBool(
+        D.queueEnabled = await configRepository.getBool(
             'instanceDialogQueueEnabled',
             true
         );
@@ -19428,20 +19694,20 @@ speechSynthesis.getVoices();
 
     $app.data.launchOptionsDialog = {
         visible: false,
-        launchArguments: configRepository.getString('launchArguments'),
-        vrcLaunchPathOverride: configRepository.getString(
+        launchArguments: await configRepository.getString('launchArguments'),
+        vrcLaunchPathOverride: await configRepository.getString(
             'vrcLaunchPathOverride'
         )
     };
 
-    API.$on('LOGIN', function () {
+    API.$on('LOGIN', async function () {
         var D = $app.launchOptionsDialog;
         if (
             D.vrcLaunchPathOverride === null ||
             D.vrcLaunchPathOverride === 'null'
         ) {
             D.vrcLaunchPathOverride = '';
-            configRepository.setString(
+            await configRepository.setString(
                 'vrcLaunchPathOverride',
                 D.vrcLaunchPathOverride
             );
@@ -19454,19 +19720,31 @@ speechSynthesis.getVoices();
 
     $app.methods.updateLaunchOptions = function () {
         var D = this.launchOptionsDialog;
-        D.visible = false;
         D.launchArguments = String(D.launchArguments)
             .replace(/\s+/g, ' ')
             .trim();
         configRepository.setString('launchArguments', D.launchArguments);
+        if (
+            D.vrcLaunchPathOverride &&
+            D.vrcLaunchPathOverride.endsWith('.exe') &&
+            !D.vrcLaunchPathOverride.endsWith('launch.exe')
+        ) {
+            this.$message({
+                message:
+                    'Invalid path, you must enter VRChat folder or launch.exe',
+                type: 'error'
+            });
+            return;
+        }
         configRepository.setString(
             'vrcLaunchPathOverride',
             D.vrcLaunchPathOverride
         );
         this.$message({
-            message: 'updated',
+            message: 'Updated launch options',
             type: 'success'
         });
+        D.visible = false;
     };
 
     $app.methods.showLaunchOptions = function () {
@@ -19845,7 +20123,7 @@ speechSynthesis.getVoices();
     $app.data.launchDialog = {
         visible: false,
         loading: false,
-        desktop: configRepository.getBool('launchAsDesktop'),
+        desktop: await configRepository.getBool('launchAsDesktop'),
         tag: '',
         location: '',
         url: '',
@@ -19854,8 +20132,11 @@ speechSynthesis.getVoices();
         secureOrShortName: ''
     };
 
-    $app.watch['launchDialog.desktop'] = function () {
-        configRepository.setBool('launchAsDesktop', this.launchDialog.desktop);
+    $app.methods.saveLaunchDialog = async function () {
+        await configRepository.setBool(
+            'launchAsDesktop',
+            this.launchDialog.desktop
+        );
     };
 
     API.$on('LOGOUT', function () {
@@ -20009,10 +20290,19 @@ speechSynthesis.getVoices();
                 }
             });
         } else {
-            AppApi.StartGame(args.join(' '));
-            this.$message({
-                message: 'VRChat launched',
-                type: 'success'
+            AppApi.StartGame(args.join(' ')).then((result) => {
+                if (!result) {
+                    this.$message({
+                        message:
+                            'Failed to find VRChat, set a custom path in launch options',
+                        type: 'error'
+                    });
+                } else {
+                    this.$message({
+                        message: 'VRChat launched',
+                        type: 'success'
+                    });
+                }
             });
         }
         console.log('Launch Game', args.join(' '), desktopMode);
@@ -22649,17 +22939,16 @@ speechSynthesis.getVoices();
         AppApi.OpenShortcutFolder();
     };
 
-    $app.methods.updateAppLauncherSettings = function () {
-        configRepository.setBool(
+    $app.methods.updateAppLauncherSettings = async function () {
+        await configRepository.setBool(
             'VRCX_enableAppLauncher',
             this.enableAppLauncher
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_enableAppLauncherAutoClose',
             this.enableAppLauncherAutoClose
         );
-
-        AppApi.SetAppLauncherSettings(
+        await AppApi.SetAppLauncherSettings(
             this.enableAppLauncher,
             this.enableAppLauncherAutoClose
         );
@@ -22667,15 +22956,55 @@ speechSynthesis.getVoices();
 
     // Screenshot Helper
 
-    $app.methods.saveScreenshotHelper = function () {
-        configRepository.setBool(
+    $app.methods.saveScreenshotHelper = async function () {
+        await configRepository.setBool(
             'VRCX_screenshotHelper',
             this.screenshotHelper
         );
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_screenshotHelperModifyFilename',
             this.screenshotHelperModifyFilename
         );
+        await configRepository.setBool(
+            'VRCX_screenshotHelperCopyToClipboard',
+            this.screenshotHelperCopyToClipboard
+        );
+    };
+
+    $app.methods.processScreenshot = async function (path) {
+        var newPath = path;
+        if (this.screenshotHelper) {
+            var location = API.parseLocation(this.lastLocation.location);
+            var metadata = {
+                application: 'VRCX',
+                version: 1,
+                author: {
+                    id: API.currentUser.id,
+                    displayName: API.currentUser.displayName
+                },
+                world: {
+                    name: this.lastLocation.name,
+                    id: location.worldId,
+                    instanceId: this.lastLocation.location
+                },
+                players: []
+            };
+            for (var user of this.lastLocation.playerList.values()) {
+                metadata.players.push({
+                    id: user.userId,
+                    displayName: user.displayName
+                });
+            }
+            newPath = await AppApi.AddScreenshotMetadata(
+                path,
+                JSON.stringify(metadata),
+                location.worldId,
+                this.screenshotHelperModifyFilename
+            );
+        }
+        if (this.screenshotHelperCopyToClipboard) {
+            await AppApi.CopyImageToClipboard(newPath);
+        }
     };
 
     $app.methods.getAndDisplayScreenshot = function (
@@ -23011,7 +23340,7 @@ speechSynthesis.getVoices();
                 type: 'error'
             });
         } else {
-            configRepository.setString(
+            await configRepository.setString(
                 'VRCX_youtubeAPIKey',
                 this.youTubeApiKey
             );
@@ -23023,10 +23352,10 @@ speechSynthesis.getVoices();
         }
     };
 
-    $app.methods.changeYouTubeApi = function () {
-        configRepository.setBool('VRCX_youtubeAPI', this.youTubeApi);
-        configRepository.setBool('VRCX_progressPie', this.progressPie);
-        configRepository.setBool(
+    $app.methods.changeYouTubeApi = async function () {
+        await configRepository.setBool('VRCX_youtubeAPI', this.youTubeApi);
+        await configRepository.setBool('VRCX_progressPie', this.progressPie);
+        await configRepository.setBool(
             'VRCX_progressPieFilter',
             this.progressPieFilter
         );
@@ -24019,9 +24348,9 @@ speechSynthesis.getVoices();
         return true;
     };
 
-    $app.methods.setAsideWidth = function () {
+    $app.methods.setAsideWidth = async function () {
         document.getElementById('aside').style.width = `${this.asideWidth}px`;
-        configRepository.setInt('VRCX_sidePanelWidth', this.asideWidth);
+        await configRepository.setInt('VRCX_sidePanelWidth', this.asideWidth);
     };
 
     // VRCX auto update
@@ -24186,16 +24515,19 @@ speechSynthesis.getVoices();
             // update already downloaded and latest version
             this.VRCXUpdateDialog.updatePendingIsLatest = true;
         }
-        if (configRepository.getString('VRCX_branch') !== this.branch) {
-            configRepository.setString('VRCX_branch', this.branch);
+        if ((await configRepository.getString('VRCX_branch')) !== this.branch) {
+            await configRepository.setString('VRCX_branch', this.branch);
         }
     };
 
-    $app.methods.saveAutoUpdateVRCX = function () {
+    $app.methods.saveAutoUpdateVRCX = async function () {
         if (this.autoUpdateVRCX === 'Off') {
             this.pendingVRCXUpdate = false;
         }
-        configRepository.setString('VRCX_autoUpdateVRCX', this.autoUpdateVRCX);
+        await configRepository.setString(
+            'VRCX_autoUpdateVRCX',
+            this.autoUpdateVRCX
+        );
     };
 
     $app.methods.checkForVRCXUpdate = async function () {
@@ -24209,7 +24541,7 @@ speechSynthesis.getVoices();
         if (this.branch === 'Beta') {
             // move Beta users to stable
             this.branch = 'Stable';
-            configRepository.setString('VRCX_branch', this.branch);
+            await configRepository.setString('VRCX_branch', this.branch);
         }
         var url = this.branches[this.branch].urlLatest;
         this.checkingForVRCXUpdate = true;
@@ -24307,9 +24639,10 @@ speechSynthesis.getVoices();
             ''
         );
         // limit to 8 characters because 2019.4.31f1c1 is a thing
-        currentUnityVersion = currentUnityVersion.slice(0, 8);
+        // limit to 7 characters because 2022361 is a thing
+        currentUnityVersion = currentUnityVersion.slice(0, 7);
         var assetVersion = version.replace(/\D/g, '');
-        assetVersion = assetVersion.slice(0, 8);
+        assetVersion = assetVersion.slice(0, 7);
         if (parseInt(assetVersion, 10) <= parseInt(currentUnityVersion, 10)) {
             return true;
         }
@@ -24746,7 +25079,7 @@ speechSynthesis.getVoices();
         data: [],
         filters: [
             {
-                prop: 'name',
+                prop: 'worldName',
                 value: ''
             }
         ],
@@ -24846,7 +25179,7 @@ speechSynthesis.getVoices();
         data: [],
         filters: [
             {
-                prop: 'name',
+                prop: 'groupName',
                 value: ''
             }
         ],
@@ -24983,22 +25316,28 @@ speechSynthesis.getVoices();
         });
     };
 
-    $app.data.dtHour12 = configRepository.getBool('VRCX_dtHour12', false);
-    $app.data.dtIsoFormat = configRepository.getBool('VRCX_dtIsoFormat', false);
+    $app.data.dtHour12 = await configRepository.getBool('VRCX_dtHour12', false);
+    $app.data.dtIsoFormat = await configRepository.getBool(
+        'VRCX_dtIsoFormat',
+        false
+    );
     $app.methods.setDatetimeFormat = async function () {
         var currentCulture = await AppApi.CurrentCulture();
-        var hour12 = configRepository.getBool('VRCX_dtHour12');
-        var isoFormat = configRepository.getBool('VRCX_dtIsoFormat');
+        var hour12 = await configRepository.getBool('VRCX_dtHour12');
+        var isoFormat = await configRepository.getBool('VRCX_dtIsoFormat');
         if (typeof this.dtHour12 !== 'undefined') {
             if (hour12 !== this.dtHour12) {
-                configRepository.setBool('VRCX_dtHour12', this.dtHour12);
+                await configRepository.setBool('VRCX_dtHour12', this.dtHour12);
                 this.updateVRConfigVars();
             }
             var hour12 = this.dtHour12;
         }
         if (typeof this.dtIsoFormat !== 'undefined') {
             if (isoFormat !== this.dtIsoFormat) {
-                configRepository.setBool('VRCX_dtIsoFormat', this.dtIsoFormat);
+                await configRepository.setBool(
+                    'VRCX_dtIsoFormat',
+                    this.dtIsoFormat
+                );
             }
             var isoFormat = this.dtIsoFormat;
         }
@@ -25060,12 +25399,12 @@ speechSynthesis.getVoices();
     };
     $app.methods.setDatetimeFormat();
 
-    $app.data.enableCustomEndpoint = configRepository.getBool(
+    $app.data.enableCustomEndpoint = await configRepository.getBool(
         'VRCX_enableCustomEndpoint',
         false
     );
-    $app.methods.toggleCustomEndpoint = function () {
-        configRepository.setBool(
+    $app.methods.toggleCustomEndpoint = async function () {
+        await configRepository.setBool(
             'VRCX_enableCustomEndpoint',
             this.enableCustomEndpoint
         );
@@ -25095,7 +25434,7 @@ speechSynthesis.getVoices();
         }
     };
 
-    $app.methods.disableGameLogDialog = function () {
+    $app.methods.disableGameLogDialog = async function () {
         if (this.isGameRunning) {
             this.$message({
                 message:
@@ -25110,10 +25449,10 @@ speechSynthesis.getVoices();
                 confirmButtonText: 'Confirm',
                 cancelButtonText: 'Cancel',
                 type: 'info',
-                callback: (action) => {
+                callback: async (action) => {
                     if (action !== 'confirm') {
                         this.gameLogDisabled = !this.gameLogDisabled;
-                        configRepository.setBool(
+                        await configRepository.setBool(
                             'VRCX_gameLogDisabled',
                             this.gameLogDisabled
                         );
@@ -25121,7 +25460,7 @@ speechSynthesis.getVoices();
                 }
             });
         } else {
-            configRepository.setBool(
+            await configRepository.setBool(
                 'VRCX_gameLogDisabled',
                 this.gameLogDisabled
             );
@@ -25359,18 +25698,18 @@ speechSynthesis.getVoices();
         database.clearAvatarHistory();
     };
 
-    $app.data.databaseVersion = configRepository.getInt(
+    $app.data.databaseVersion = await configRepository.getInt(
         'VRCX_databaseVersion',
         0
     );
 
     $app.methods.updateDatabaseVersion = async function () {
-        var databaseVersion = 6;
+        var databaseVersion = 7;
         if (this.databaseVersion < databaseVersion) {
             if (this.databaseVersion) {
                 var msgBox = this.$message({
                     message:
-                        'DO NOT CLOSE VRCX, database upgrade in process...',
+                        'DO NOT CLOSE VRCX, database upgrade in progress...',
                     type: 'warning',
                     duration: 0
                 });
@@ -25385,8 +25724,10 @@ speechSynthesis.getVoices();
                 await database.fixBrokenLeaveEntries(); // fix user instance timer being higher than current user location timer
                 await database.fixBrokenGroupInvites(); // fix notification v2 in wrong table
                 await database.updateTableForGroupNames(); // alter tables to include group name
-                database.fixBrokenNotifications(); // fix notifications being null
-                configRepository.setInt(
+                await database.fixBrokenNotifications(); // fix notifications being null
+                await database.vacuum(); // succ
+                await database.setWal(); // https://www.sqlite.org/wal.html
+                await configRepository.setInt(
                     'VRCX_databaseVersion',
                     databaseVersion
                 );
@@ -26220,14 +26561,14 @@ speechSynthesis.getVoices();
         this.saveAvatarProviderList();
     };
 
-    $app.methods.saveAvatarProviderList = function () {
+    $app.methods.saveAvatarProviderList = async function () {
         var length = this.avatarRemoteDatabaseProviderList.length;
         for (var i = 0; i < length; ++i) {
             if (!this.avatarRemoteDatabaseProviderList[i]) {
                 this.avatarRemoteDatabaseProviderList.splice(i, 1);
             }
         }
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_avatarRemoteDatabaseProviderList',
             JSON.stringify(this.avatarRemoteDatabaseProviderList)
         );
@@ -26239,7 +26580,7 @@ speechSynthesis.getVoices();
             this.avatarRemoteDatabaseProvider = '';
             this.avatarRemoteDatabase = false;
         }
-        configRepository.setBool(
+        await configRepository.setBool(
             'VRCX_avatarRemoteDatabase',
             this.avatarRemoteDatabase
         );
@@ -26622,7 +26963,7 @@ speechSynthesis.getVoices();
                 inputErrorMessage: $t(
                     'prompt.pending_offline_delay.input_error'
                 ),
-                callback: (action, instance) => {
+                callback: async (action, instance) => {
                     if (
                         action === 'confirm' &&
                         instance.inputValue &&
@@ -26631,7 +26972,7 @@ speechSynthesis.getVoices();
                         this.pendingOfflineDelay = Math.trunc(
                             Number(instance.inputValue) * 1000
                         );
-                        configRepository.setInt(
+                        await configRepository.setInt(
                             'VRCX_pendingOfflineDelay',
                             this.pendingOfflineDelay
                         );
@@ -26653,9 +26994,9 @@ speechSynthesis.getVoices();
         "' by '",
         '[Spotify] '
     ];
-    if (configRepository.getString('VRCX_chatboxBlacklist')) {
+    if (await configRepository.getString('VRCX_chatboxBlacklist')) {
         $app.data.chatboxBlacklist = JSON.parse(
-            configRepository.getString('VRCX_chatboxBlacklist')
+            await configRepository.getString('VRCX_chatboxBlacklist')
         );
     }
     $app.data.chatboxBlacklistDialog = {
@@ -26667,8 +27008,8 @@ speechSynthesis.getVoices();
         $app.chatboxBlacklistDialog.visible = false;
     });
 
-    $app.methods.saveChatboxBlacklist = function () {
-        configRepository.setString(
+    $app.methods.saveChatboxBlacklist = async function () {
+        await configRepository.setString(
             'VRCX_chatboxBlacklist',
             JSON.stringify(this.chatboxBlacklist)
         );
@@ -26694,32 +27035,34 @@ speechSynthesis.getVoices();
     // #endregion
     // #region | App: ChatBox User Blacklist
     $app.data.chatboxUserBlacklist = new Map();
-    if (configRepository.getString('VRCX_chatboxUserBlacklist')) {
+    if (await configRepository.getString('VRCX_chatboxUserBlacklist')) {
         $app.data.chatboxUserBlacklist = new Map(
             Object.entries(
                 JSON.parse(
-                    configRepository.getString('VRCX_chatboxUserBlacklist')
+                    await configRepository.getString(
+                        'VRCX_chatboxUserBlacklist'
+                    )
                 )
             )
         );
     }
 
-    $app.methods.saveChatboxUserBlacklist = function () {
-        configRepository.setString(
+    $app.methods.saveChatboxUserBlacklist = async function () {
+        await configRepository.setString(
             'VRCX_chatboxUserBlacklist',
             JSON.stringify(Object.fromEntries(this.chatboxUserBlacklist))
         );
     };
 
-    $app.methods.addChatboxUserBlacklist = function (user) {
+    $app.methods.addChatboxUserBlacklist = async function (user) {
         this.chatboxUserBlacklist.set(user.id, user.displayName);
-        this.saveChatboxUserBlacklist();
+        await this.saveChatboxUserBlacklist();
         this.getCurrentInstanceUserList();
     };
 
-    $app.methods.deleteChatboxUserBlacklist = function (userId) {
+    $app.methods.deleteChatboxUserBlacklist = async function (userId) {
         this.chatboxUserBlacklist.delete(userId);
-        this.saveChatboxUserBlacklist();
+        await this.saveChatboxUserBlacklist();
         this.getCurrentInstanceUserList();
         this.$nextTick(() =>
             adjustDialogZ(this.$refs.chatboxBlacklistDialog.$el)
@@ -26735,6 +27078,10 @@ speechSynthesis.getVoices();
 
     $app.methods.removeAllQueuedInstances = function () {
         API.queuedInstances.forEach((ref) => {
+            this.$message({
+                message: `Removed instance ${ref.$worldName} from queue`,
+                type: 'info'
+            });
             ref.$msgBox?.close();
         });
         API.queuedInstances.clear();
@@ -26745,6 +27092,40 @@ speechSynthesis.getVoices();
         if (typeof ref !== 'undefined') {
             ref.$msgBox.close();
             API.queuedInstances.delete(instanceId);
+        }
+    };
+
+    API.applyQueuedInstance = function (instanceId) {
+        API.queuedInstances.forEach((ref) => {
+            if (ref.location !== instanceId) {
+                $app.$message({
+                    message: `Removed instance ${ref.$worldName} from queue`,
+                    type: 'info'
+                });
+                ref.$msgBox?.close();
+                API.queuedInstances.delete(ref.location);
+            }
+        });
+        if (!instanceId) {
+            return;
+        }
+        if (!API.queuedInstances.has(instanceId)) {
+            var L = API.parseLocation(instanceId);
+            if (L.worldId && L.instanceId) {
+                API.getInstance({
+                    worldId: L.worldId,
+                    instanceId: L.instanceId
+                }).then((args) => {
+                    if (args.json?.queueSize) {
+                        $app.instanceQueueUpdate(
+                            instanceId,
+                            args.json?.queueSize,
+                            args.json?.queueSize
+                        );
+                    }
+                });
+            }
+            $app.instanceQueueUpdate(instanceId, 0, 0);
         }
     };
 
@@ -26823,25 +27204,23 @@ speechSynthesis.getVoices();
         );
         ref.$msgBox.message = `You are in position ${ref.position} of ${ref.queueSize} in the queue for ${displayLocation} `;
         API.queuedInstances.set(instanceId, ref);
-        workerTimers.setTimeout(this.instanceQueueTimeout, 3600000);
+        // workerTimers.setTimeout(this.instanceQueueTimeout, 3600000);
     };
 
-    $app.methods.instanceQueueTimeout = function () {
-        // remove instance from queue after 1hour of inactivity
-        API.queuedInstances.forEach((ref) => {
-            // 59mins
-            if (Date.now() - ref.updatedAt > 3540000) {
-                ref.$msgBox.close();
-                API.queuedInstances.delete(ref.location);
-            }
-        });
-    };
+    // $app.methods.instanceQueueTimeout = function () {
+    //     // remove instance from queue after 1hour of inactivity
+    //     API.queuedInstances.forEach((ref) => {
+    //         // 59mins
+    //         if (Date.now() - ref.updatedAt > 3540000) {
+    //             ref.$msgBox.close();
+    //             API.queuedInstances.delete(ref.location);
+    //         }
+    //     });
+    // };
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     */
     API.getGroup = function (params) {
         return this.call(`groups/${params.groupId}`, {
             method: 'GET',
@@ -26876,11 +27255,10 @@ speechSynthesis.getVoices();
         D.ref = ref;
     });
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * @param {{ userId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.getRepresentedGroup = function (params) {
         return this.call(`users/${params.userId}/groups/represented`, {
             method: 'GET'
@@ -26911,11 +27289,10 @@ speechSynthesis.getVoices();
         });
     });
 
-    /*
-        params: {
-            userId: string
-        }
-    */
+    /**
+     * @param {{ userId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.getGroups = function (params) {
         return this.call(`users/${params.userId}/groups`, {
             method: 'GET'
@@ -26943,11 +27320,10 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.joinGroup = function (params) {
         return this.call(`groups/${params.groupId}/join`, {
             method: 'POST'
@@ -26992,11 +27368,10 @@ speechSynthesis.getVoices();
         this.currentUserGroups.set(groupId, json);
     });
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.leaveGroup = function (params) {
         return this.call(`groups/${params.groupId}/leave`, {
             method: 'POST'
@@ -27026,11 +27401,10 @@ speechSynthesis.getVoices();
         this.currentUserGroups.delete(groupId);
     });
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.cancelGroupRequest = function (params) {
         return this.call(`groups/${params.groupId}/requests`, {
             method: 'DELETE'
@@ -27084,11 +27458,10 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
-            query: string
-        }
-    */
+    /**
+     * @param {{ query: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.groupStrictsearch = function (params) {
         return this.call(`groups/strictsearch`, {
             method: 'GET',
@@ -27197,12 +27570,13 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
+    /**
+    * @param {{
             userId: string,
             groupId: string,
             roleId: string
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.addGroupMemberRole = function (params) {
         return this.call(
@@ -27220,12 +27594,13 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
+    /**
+    * @param {{
             userId: string,
             groupId: string,
             roleId: string
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.removeGroupMemberRole = function (params) {
         return this.call(
@@ -27274,11 +27649,10 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    //**
+    // * @param {{ groupId: string }} params
+    // * @return { Promise<{json: any, params}> }
+    // */
     // API.getGroupAnnouncement = function (params) {
     //     return this.call(`groups/${params.groupId}/announcement`, {
     //         method: 'GET'
@@ -27292,12 +27666,13 @@ speechSynthesis.getVoices();
     //     });
     // };
 
-    /*
-        params: {
+    /**
+    * @param {{
             groupId: string,
             n: number,
             offset: number
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.getGroupPosts = function (params) {
         return this.call(`groups/${params.groupId}/posts`, {
@@ -27313,11 +27688,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.getAllGroupPosts = async function (params) {
         var posts = [];
         var offset = 0;
@@ -27339,11 +27713,12 @@ speechSynthesis.getVoices();
         };
     };
 
-    /*
-        params: {
+    /**
+    * @param {{
             groupId: string,
             userId: string
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.getGroupMember = function (params) {
         return this.call(`groups/${params.groupId}/members/${params.userId}`, {
@@ -27358,12 +27733,13 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
+    /**
+    * @param {{
             groupId: string,
             n: number,
             offset: number
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.getGroupMembers = function (params) {
         return this.call(`groups/${params.groupId}/members`, {
@@ -27394,13 +27770,14 @@ speechSynthesis.getVoices();
         args.ref = this.applyGroupMember(args.json);
     });
 
-    /*
-        params: {
+    /**
+    * @param {{
             groupId: string,
             query: string,
             n: number,
             offset: number
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.getGroupMembersSearch = function (params) {
         return this.call(`groups/${params.groupId}/members/search`, {
@@ -27427,11 +27804,12 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
+    /**
+    * @param {{
             groupId: string,
             userId: string
-        }
+    * }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.sendGroupInvite = function (params) {
         return this.call(`groups/${params.groupId}/invites`, {
@@ -27449,11 +27827,12 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
+    /**
+    * @param {{
             groupId: string,
             userId: string
-        }
+     }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.kickGroupMember = function (params) {
         return this.call(`groups/${params.groupId}/members/${params.userId}`, {
@@ -27468,12 +27847,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            groupId: string,
-            userId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string, userId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.banGroupMember = function (params) {
         return this.call(`groups/${params.groupId}/bans`, {
             method: 'POST',
@@ -27490,11 +27867,10 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
 
     API.getGroupInstances = function (params) {
         return this.call(
@@ -27534,11 +27910,10 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
 
     API.getGroupRoles = function (params) {
         return this.call(`groups/${params.groupId}/roles`, {
@@ -27605,14 +27980,15 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
+    /**
+    * @param {{
             query: string,
             n: number,
             offset: number,
             order: string,
             sortBy: string
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.groupSearch = function (params) {
         return this.call(`groups`, {
@@ -27639,11 +28015,10 @@ speechSynthesis.getVoices();
         }
     });
 
-    /*
-        params: {
-            groupId: string
-        }
-    */
+    /**
+     * @param {{ groupId: string }} params
+     * @return { Promise<{json: any, params}> }
+     */
     API.getCachedGroup = function (params) {
         return new Promise((resolve, reject) => {
             var ref = this.cachedGroups.get(params.groupId);
@@ -28361,13 +28736,14 @@ speechSynthesis.getVoices();
 
     $app.data.isGroupGalleryLoading = false;
 
-    /*
-        params: {
+    /**
+    * @param {{
             groupId: string,
             galleryId: string,
             n: number,
             offset: number
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.getGroupGallery = function (params) {
         return this.call(
@@ -28567,9 +28943,8 @@ speechSynthesis.getVoices();
             return;
         }
         try {
-            var loggingEnabled = await AppApi.GetVRChatRegistryKey(
-                'LOGGING_ENABLED'
-            );
+            var loggingEnabled =
+                await AppApi.GetVRChatRegistryKey('LOGGING_ENABLED');
             if (loggingEnabled === null) {
                 // key not found
                 return;
@@ -28695,31 +29070,34 @@ speechSynthesis.getVoices();
     // #region | App: Language
 
     $app.data.appLanguage = 'en';
-    if (configRepository.getString('VRCX_appLanguage')) {
-        $app.data.appLanguage = configRepository.getString('VRCX_appLanguage');
-        i18n.locale = $app.data.appLanguage;
-    } else {
-        AppApi.CurrentLanguage().then((result) => {
+    var initLanguage = async () => {
+        if (await configRepository.getString('VRCX_appLanguage')) {
+            $app.data.appLanguage =
+                await configRepository.getString('VRCX_appLanguage');
+            i18n.locale = $app.data.appLanguage;
+        } else {
+            var result = await AppApi.CurrentLanguage();
             if (!result) {
                 console.error('Failed to get current language');
-                $app.changeAppLanguage('en');
+                await $app.changeAppLanguage('en');
                 return;
             }
             var lang = result.split('-')[0];
-            i18n.availableLocales.forEach((ref) => {
+            i18n.availableLocales.forEach(async (ref) => {
                 var refLang = ref.split('_')[0];
                 if (refLang === lang) {
-                    $app.changeAppLanguage(ref);
+                    await $app.changeAppLanguage(ref);
                 }
             });
-        });
-    }
+        }
+    };
+    await initLanguage();
 
-    $app.methods.changeAppLanguage = function (language) {
+    $app.methods.changeAppLanguage = async function (language) {
         console.log('Language changed:', language);
         this.appLanguage = language;
         i18n.locale = language;
-        configRepository.setString('VRCX_appLanguage', language);
+        await configRepository.setString('VRCX_appLanguage', language);
         this.updateVRConfigVars();
     };
 
@@ -28797,13 +29175,14 @@ speechSynthesis.getVoices();
         });
     };
 
-    /*
-        params: {
+    /**
+    * @param {{
             userId: string,
             contentType: string,
             reason: string,
             type: string
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
     */
     API.reportUser = function (params) {
         return this.call(`feedback/${params.userId}/user`, {
@@ -28827,11 +29206,13 @@ speechSynthesis.getVoices();
         return text.replace(/([^!])\[[^\]]+\]\([^)]+\)/g, '$1');
     };
 
-    /*
-        params: {
+    /**
+    * @param {{
             fileId: string,
             version: number
-        }
+    }} params
+    * @return { Promise<{json: any, params}> }
+
     */
     API.getFileAnalysis = function (params) {
         return this.call(`analysis/${params.fileId}/${params.version}`, {
@@ -29034,13 +29415,13 @@ speechSynthesis.getVoices();
         this.updateRegistryBackupDialog();
     };
 
-    $app.methods.updateRegistryBackupDialog = function () {
+    $app.methods.updateRegistryBackupDialog = async function () {
         var D = this.registryBackupDialog;
         this.registryBackupTable.data = [];
         if (!D.visible) {
             return;
         }
-        var backupsJson = configRepository.getString(
+        var backupsJson = await configRepository.getString(
             'VRCX_VRChatRegistryBackups'
         );
         if (!backupsJson) {
@@ -29073,7 +29454,7 @@ speechSynthesis.getVoices();
             date: new Date().toJSON(),
             data: regJson
         };
-        var backupsJson = configRepository.getString(
+        var backupsJson = await configRepository.getString(
             'VRCX_VRChatRegistryBackups'
         );
         if (!backupsJson) {
@@ -29081,21 +29462,21 @@ speechSynthesis.getVoices();
         }
         var backups = JSON.parse(backupsJson);
         backups.push(newBackup);
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_VRChatRegistryBackups',
             JSON.stringify(backups)
         );
-        this.updateRegistryBackupDialog();
+        await this.updateRegistryBackupDialog();
     };
 
-    $app.methods.deleteVrcRegistryBackup = function (row) {
+    $app.methods.deleteVrcRegistryBackup = async function (row) {
         var backups = this.registryBackupTable.data;
         removeFromArray(backups, row);
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_VRChatRegistryBackups',
             JSON.stringify(backups)
         );
-        this.updateRegistryBackupDialog();
+        await this.updateRegistryBackupDialog();
     };
 
     $app.methods.restoreVrcRegistryBackup = function (row) {
@@ -29200,18 +29581,19 @@ speechSynthesis.getVoices();
         // check for auto restore
         var hasVRChatRegistryFolder = await AppApi.HasVRChatRegistryFolder();
         if (!hasVRChatRegistryFolder) {
-            var lastBackupDate = configRepository.getString(
+            var lastBackupDate = await configRepository.getString(
                 'VRCX_VRChatRegistryLastBackupDate'
             );
-            var lastRestoreCheck = configRepository.getString(
+            var lastRestoreCheck = await configRepository.getString(
                 'VRCX_VRChatRegistryLastRestoreCheck'
             );
             if (
-                lastRestoreCheck &&
-                lastBackupDate &&
-                lastRestoreCheck === lastBackupDate
+                !lastBackupDate ||
+                (lastRestoreCheck &&
+                    lastBackupDate &&
+                    lastRestoreCheck === lastBackupDate)
             ) {
-                // only ask to restore once
+                // only ask to restore once and when backup is present
                 return;
             }
             // popup message about auto restore
@@ -29220,19 +29602,19 @@ speechSynthesis.getVoices();
                 $t('dialog.registry_backup.header')
             );
             this.showRegistryBackupDialog();
-            AppApi.FocusWindow();
-            configRepository.setString(
+            await AppApi.FocusWindow();
+            await configRepository.setString(
                 'VRCX_VRChatRegistryLastRestoreCheck',
                 lastBackupDate
             );
         } else {
-            this.autoBackupVrcRegistry();
+            await this.autoBackupVrcRegistry();
         }
     };
 
-    $app.methods.autoBackupVrcRegistry = function () {
+    $app.methods.autoBackupVrcRegistry = async function () {
         var date = new Date();
-        var lastBackupDate = configRepository.getString(
+        var lastBackupDate = await configRepository.getString(
             'VRCX_VRChatRegistryLastBackupDate'
         );
         if (lastBackupDate) {
@@ -29243,7 +29625,7 @@ speechSynthesis.getVoices();
                 return;
             }
         }
-        var backupsJson = configRepository.getString(
+        var backupsJson = await configRepository.getString(
             'VRCX_VRChatRegistryBackups'
         );
         if (!backupsJson) {
@@ -29256,12 +29638,12 @@ speechSynthesis.getVoices();
                 removeFromArray(backups, backup);
             }
         });
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_VRChatRegistryBackups',
             JSON.stringify(backups)
         );
         this.backupVrcRegistry('Auto Backup');
-        configRepository.setString(
+        await configRepository.setString(
             'VRCX_VRChatRegistryLastBackupDate',
             date.toJSON()
         );
@@ -29588,6 +29970,30 @@ speechSynthesis.getVoices();
             D.progressCurrent = 0;
             D.progressTotal = 0;
         }
+    };
+
+    // #endregion
+
+    // #region | V-Bucks
+
+    API.$on('VBUCKS', function (args) {
+        this.currentUser.$vbucks = args.json?.balance;
+    });
+
+    API.getVbucks = function () {
+        return this.call(`user/${this.currentUser.id}/balance`, {
+            method: 'GET'
+        }).then((json) => {
+            var args = {
+                json
+            };
+            this.$emit('VBUCKS', args);
+            return args;
+        });
+    };
+
+    $app.methods.getVbucks = function () {
+        API.getVbucks();
     };
 
     // #endregion
