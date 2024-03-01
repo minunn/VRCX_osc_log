@@ -12883,7 +12883,8 @@ speechSynthesis.getVoices();
             } else if (
                 L.worldId === 'wrld_74970324-58e8-4239-a17b-2c59dfdf00db' ||
                 L.worldId === 'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445' ||
-                L.worldId === 'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e'
+                L.worldId === 'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e' ||
+                L.worldId === 'wrld_f767d1c8-b249-4ecc-a56f-614e433682c8'
             ) {
                 appId = '968292722391785512';
                 bigIcon = 'ls_media';
@@ -15377,6 +15378,7 @@ speechSynthesis.getVoices();
             'wrld_04899f23-e182-4a8d-b2c7-2c74c7c15534',
             'wrld_435bbf25-f34f-4b8b-82c6-cd809057eb8e',
             'wrld_db9d878f-6e76-4776-8bf2-15bcdd7fc445',
+            'wrld_f767d1c8-b249-4ecc-a56f-614e433682c8',
             'wrld_74970324-58e8-4239-a17b-2c59dfdf00db',
             'wrld_266523e8-9161-40da-acd0-6bd82e075833'
         ];
@@ -16290,36 +16292,6 @@ speechSynthesis.getVoices();
     // #endregion
     // #region | App: User Dialog
 
-    $app.data.userDialogWorldSortingOptions = {
-        updated: {
-            name: $t('dialog.user.worlds.sorting.updated'),
-            value: 'updated'
-        },
-        created: {
-            name: $t('dialog.user.worlds.sorting.created'),
-            value: 'created'
-        },
-        favorites: {
-            name: $t('dialog.user.worlds.sorting.favorites'),
-            value: 'favorites'
-        },
-        popularity: {
-            name: $t('dialog.user.worlds.sorting.popularity'),
-            value: 'popularity'
-        }
-    };
-
-    $app.data.userDialogWorldOrderOptions = {
-        descending: {
-            name: $t('dialog.user.worlds.order.descending'),
-            value: 'descending'
-        },
-        ascending: {
-            name: $t('dialog.user.worlds.order.ascending'),
-            value: 'ascending'
-        }
-    };
-
     $app.data.userDialog = {
         visible: false,
         loading: false,
@@ -16350,8 +16322,14 @@ speechSynthesis.getVoices();
         isAvatarsLoading: false,
         isGroupsLoading: false,
 
-        worldSorting: $app.data.userDialogWorldSortingOptions.updated,
-        worldOrder: $app.data.userDialogWorldOrderOptions.descending,
+        worldSorting: {
+            name: $t('dialog.user.worlds.sorting.updated'),
+            value: 'updated'
+        },
+        worldOrder: {
+            name: $t('dialog.user.worlds.order.descending'),
+            value: 'descending'
+        },
         avatarSorting: 'update',
         avatarReleaseStatus: 'all',
 
@@ -28157,32 +28135,6 @@ speechSynthesis.getVoices();
         }
     };
 
-    $app.data.groupDialogSortingOptions = {
-        joinedAtDesc: {
-            name: $t('dialog.group.members.sorting.joined_at_desc'),
-            value: 'joinedAt:desc'
-        },
-        joinedAtAsc: {
-            name: $t('dialog.group.members.sorting.joined_at_asc'),
-            value: 'joinedAt:asc'
-        },
-        userId: {
-            name: $t('dialog.group.members.sorting.user_id'),
-            value: ''
-        }
-    };
-
-    $app.data.groupDialogFilterOptions = {
-        everyone: {
-            name: $t('dialog.group.members.filters.everyone'),
-            id: null
-        },
-        usersWithNoRole: {
-            name: $t('dialog.group.members.filters.users_with_no_role'),
-            id: ''
-        }
-    };
-
     $app.data.groupDialog = {
         visible: false,
         loading: false,
@@ -28199,8 +28151,14 @@ speechSynthesis.getVoices();
         memberSearchResults: [],
         instances: [],
         memberRoles: [],
-        memberFilter: $app.data.groupDialogFilterOptions.everyone,
-        memberSortOrder: $app.data.groupDialogSortingOptions.joinedAtDesc,
+        memberFilter: {
+            name: $t('dialog.group.members.filters.everyone'),
+            id: null
+        },
+        memberSortOrder: {
+            name: $t('dialog.group.members.sorting.joined_at_desc'),
+            value: 'joinedAt:desc'
+        },
         postsSearch: '',
         galleries: {}
     };
@@ -29094,6 +29052,80 @@ speechSynthesis.getVoices();
     // #endregion
     // #region | App: Language
 
+    $app.methods.applyUserDialogSortingStrings = function () {
+        this.userDialogWorldSortingOptions = {
+            updated: {
+                name: $t('dialog.user.worlds.sorting.updated'),
+                value: 'updated'
+            },
+            created: {
+                name: $t('dialog.user.worlds.sorting.created'),
+                value: 'created'
+            },
+            favorites: {
+                name: $t('dialog.user.worlds.sorting.favorites'),
+                value: 'favorites'
+            },
+            popularity: {
+                name: $t('dialog.user.worlds.sorting.popularity'),
+                value: 'popularity'
+            }
+        };
+
+        this.userDialogWorldOrderOptions = {
+            descending: {
+                name: $t('dialog.user.worlds.order.descending'),
+                value: 'descending'
+            },
+            ascending: {
+                name: $t('dialog.user.worlds.order.ascending'),
+                value: 'ascending'
+            }
+        };
+    };
+
+    $app.methods.applyGroupDialogSortingStrings = function () {
+        this.groupDialogSortingOptions = {
+            joinedAtDesc: {
+                name: $t('dialog.group.members.sorting.joined_at_desc'),
+                value: 'joinedAt:desc'
+            },
+            joinedAtAsc: {
+                name: $t('dialog.group.members.sorting.joined_at_asc'),
+                value: 'joinedAt:asc'
+            },
+            userId: {
+                name: $t('dialog.group.members.sorting.user_id'),
+                value: ''
+            }
+        };
+
+        this.groupDialogFilterOptions = {
+            everyone: {
+                name: $t('dialog.group.members.filters.everyone'),
+                id: null
+            },
+            usersWithNoRole: {
+                name: $t('dialog.group.members.filters.users_with_no_role'),
+                id: ''
+            }
+        };
+    };
+
+    $app.methods.applyLanguageStrings = function () {
+        // repply sorting strings
+        this.applyUserDialogSortingStrings();
+        this.applyGroupDialogSortingStrings();
+        this.userDialog.worldSorting =
+            this.userDialogWorldSortingOptions.updated;
+        this.userDialog.worldOrder =
+            this.userDialogWorldOrderOptions.descending;
+        this.groupDialog.memberFilter = this.groupDialogFilterOptions.everyone;
+        this.groupDialog.memberSortOrder =
+            this.groupDialogSortingOptions.joinedAtDesc;
+    };
+    // $app.methods.applyLanguageStrings();
+
     $app.data.appLanguage =
         (await configRepository.getString('VRCX_appLanguage')) ?? 'en';
     i18n.locale = $app.data.appLanguage;
@@ -29113,6 +29145,8 @@ speechSynthesis.getVoices();
                 }
             });
         }
+
+        $app.applyLanguageStrings();
     };
     initLanguage();
 
@@ -29121,6 +29155,7 @@ speechSynthesis.getVoices();
         this.appLanguage = language;
         i18n.locale = language;
         configRepository.setString('VRCX_appLanguage', language);
+        this.applyLanguageStrings();
         this.updateVRConfigVars();
     };
 
