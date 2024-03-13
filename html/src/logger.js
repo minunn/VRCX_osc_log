@@ -18,6 +18,11 @@ class Logger {
       this.sendToServer(logEntry);
   }
 
+  avtr(message) {
+    const logEntry = `${message}`;
+      this.sendToServer(logEntry);
+  }
+
   sendToServer(logEntry) {
     fetch(this.logEndpoint, {
       method: 'POST',

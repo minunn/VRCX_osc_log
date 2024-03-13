@@ -28,6 +28,28 @@ import * as localizedStrings from './localization/localizedStrings.js';
 import logger from './logger.js';
 // #endregion
 
+//global variables
+//blacklisted avatars from the file blacklistedavatars.json
+
+// Global variable to store the blacklisted avatars
+let blacklistedAvatars = [];
+
+async function loadBlacklistedAvatars() {
+    try {
+        const response = await fetch('blacklistedavatars.json')
+        const data = await response.json();
+        blacklistedAvatars = data.blacklisted_avatars;
+    } catch (err) {
+        console.error('Error reading blacklistedavatars.json:', err);
+    }
+}
+
+// Load blacklisted avatars initially
+loadBlacklistedAvatars();
+
+// Periodically fetch the file to check for updates every 10 seconds
+setInterval(loadBlacklistedAvatars, 10000);
+
 speechSynthesis.getVoices();
 
 // #region | Hey look it's most of VRCX!
@@ -11830,35 +11852,54 @@ speechSynthesis.getVoices();
         var avatar = user.avatarDict;
         avatar.name = this.replaceBioSymbols(avatar.name);
         avatar.description = this.replaceBioSymbols(avatar.description);
+        // console.log('user', user);
+        // console.log('avatar', avatar);
+        // console.log('user.avatarDict', user.avatarDict);
+        // //avatar id
+        // console.log('avatar.id', avatar.id);
+        // console.log('user.avatarDict.id', user.avatarDict.id);
+        // console.log('avatarDialog.id', avatarDialog.id);
+        // console.log('avatarDialog', this.targetAvatarId);
         var platform = '';
         if (user.last_platform === 'android') {
             platform = 'Android';
             logger.log("🤖 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Android with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("🤖 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Android with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
+
         } else if (user.last_platform === 'ios') {
             platform = 'iOS';
             logger.log("🍎 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on iOS with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("🍎 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on iOS with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
+
         } else if (user.inVRMode) {
             platform = 'VR';
             logger.log("🎧 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("🎧 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
+
             //check if user has moderation permissions
         } else if (user.canModerateInstance) {
             platform = 'Moderator';
             logger.log("⚒️ "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("⚒️ "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
-            //check for specific user name
-        } else if (user.displayName === 'V0LT4N') {
-            logger.log("👑 le bébé d'amour à Tortue "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
-            logger.info("👑 le bébé d'amour à Tortue "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
-        }
-         else {
+            logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
+            //check if avatar.id is in the list of blacklisted avatars in the json file blacklistedavatars.json
+        } else { 
             platform = 'Desktop';
             logger.log("💻 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("💻 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
+            logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
         }
         this.photonUserSusieCheck(photonId, user, gameLogDate);
+        console.log(blacklistedAvatars, Array.isArray(blacklistedAvatars));
+        //check if blacklistedAvatars array has the avatar.id
+        if (blacklistedAvatars.includes(avatar.id)) {
+            logger.log("🚫 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with avatar crash ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted'+'\n avatar id : '+avatar.id+'\n user id: '+this.getUserIdFromPhotonId(photonId));
+            logger.info("🚫 "+this.getDisplayNameFromPhotonId(photonId) + ' has been detected with avatar crash ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted');
+            // logger.avtr("`"+avatar.id+'\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n'+avatar.imageUrl+'\n'+avatar.thumbnailImageUrl+"`");
+        }
         this.checkVRChatCache(avatar).then((cacheInfo) => {
             var inCache = false;
             if (cacheInfo.Item1 > 0) {
@@ -12089,6 +12130,13 @@ speechSynthesis.getVoices();
                 });
                 logger.log("🧒 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName);
                 logger.info("🧒 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName);
+                //give the avatar info with return line
+                    logger.avtr("INFO : || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"` || ");
+            //check if avatar.id is in the list of blacklisted avatars in the json file blacklistedavatars.json
+                if (blacklistedAvatars.includes(avatar.id)) {
+                    logger.log("🚫 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted'+'\n avatar id : '+avatar.id+'\n user id: '+this.getUserIdFromPhotonId(photonId));
+                    logger.info("🚫 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted'+'\n avatar id : '+avatar.id+'\n user id: '+this.getUserIdFromPhotonId(photonId));
+                }
             });
         }
         this.photonLobbyAvatars.set(user.id, avatar.id);
