@@ -113,7 +113,7 @@ html
                             template(#label)
                                 span {{ $t('side_panel.friends') }} ({{ onlineFriendCount }}/{{ friends.size }})
                             .x-friend-list(style="padding:10px 5px")
-                                .x-friend-group.x-link(@click="isFriendsGroupMe = !isFriendsGroupMe" style="padding:0px 0px 5px")
+                                .x-friend-group.x-link(@click="isFriendsGroupMe = !isFriendsGroupMe; saveFriendsGroupStates()" style="padding:0px 0px 5px")
                                     i.el-icon-arrow-right(:class="{ rotate: isFriendsGroupMe }")
                                     span(style="margin-left:5px") {{ $t('side_panel.me') }}
                                 div(v-show="isFriendsGroupMe")
@@ -125,7 +125,7 @@ html
                                             location.extra(v-if="isGameRunning && !gameLogDisabled" :location="lastLocation.location" :traveling="lastLocationDestination" :link="false")
                                             location.extra(v-else-if="isRealInstance(API.currentUser.$locationTag) || isRealInstance(API.currentUser.$travelingToLocation)" :location="API.currentUser.$locationTag" :traveling="API.currentUser.$travelingToLocation" :link="false")
                                             span.extra(v-else v-text="API.currentUser.statusDescription")
-                                .x-friend-group.x-link(@click="isFriendsGroup0 = !isFriendsGroup0" v-show="friendsGroup0.length")
+                                .x-friend-group.x-link(@click="isFriendsGroup0 = !isFriendsGroup0; saveFriendsGroupStates()" v-show="friendsGroup0.length")
                                     i.el-icon-arrow-right(:class="{ rotate: isFriendsGroup0 }")
                                     span(style="margin-left:5px") {{ $t('side_panel.favorite') }} &horbar; {{ friendsGroup0.length }}
                                 div(v-show="isFriendsGroup0")
@@ -134,14 +134,14 @@ html
                                             .avatar(:class="userStatusClass(friend.ref, friend.pendingOffline)")
                                                 img(v-lazy="userImage(friend.ref)")
                                             .detail
-                                                span.name(v-if="!hideUserMemos && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
+                                                span.name(v-if="!hideNicknames && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
                                                 span.name(v-else v-text="friend.ref.displayName" :style="{'color':friend.ref.$userColour}")
                                                 span.extra(v-if="friend.pendingOffline") #[i.el-icon-warning-outline] {{ $t('side_panel.pending_offline') }}
                                                 location.extra(v-else :location="friend.ref.location" :traveling="friend.ref.travelingToLocation" :link="false")
                                         template(v-else)
                                             span(v-text="friend.name || friend.id")
                                             el-button(type="text" icon="el-icon-close" size="mini" @click.stop="confirmDeleteFriend(friend.id)" style="margin-left:5px")
-                                .x-friend-group.x-link(@click="isFriendsGroup1 = !isFriendsGroup1" v-show="friendsGroup1.length")
+                                .x-friend-group.x-link(@click="isFriendsGroup1 = !isFriendsGroup1; saveFriendsGroupStates()" v-show="friendsGroup1.length")
                                     i.el-icon-arrow-right(:class="{ rotate: isFriendsGroup1 }")
                                     span(style="margin-left:5px") {{ $t('side_panel.online') }} &horbar; {{ friendsGroup1.length }}
                                 div(v-show="isFriendsGroup1")
@@ -150,14 +150,14 @@ html
                                             .avatar(:class="userStatusClass(friend.ref, friend.pendingOffline)")
                                                 img(v-lazy="userImage(friend.ref)")
                                             .detail
-                                                span.name(v-if="!hideUserMemos && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
+                                                span.name(v-if="!hideNicknames && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
                                                 span.name(v-else v-text="friend.ref.displayName" :style="{'color':friend.ref.$userColour}")
                                                 span.extra(v-if="friend.pendingOffline") #[i.el-icon-warning-outline] {{ $t('side_panel.pending_offline') }}
                                                 location.extra(v-else :location="friend.ref.location" :traveling="friend.ref.travelingToLocation" :link="false")
                                         template(v-else)
                                             span(v-text="friend.name || friend.id")
                                             el-button(type="text" icon="el-icon-close" size="mini" @click.stop="confirmDeleteFriend(friend.id)" style="margin-left:5px")
-                                .x-friend-group.x-link(@click="isFriendsGroup2 = !isFriendsGroup2" v-show="friendsGroup2.length")
+                                .x-friend-group.x-link(@click="isFriendsGroup2 = !isFriendsGroup2; saveFriendsGroupStates()" v-show="friendsGroup2.length")
                                     i.el-icon-arrow-right(:class="{ rotate: isFriendsGroup2 }")
                                     span(style="margin-left:5px") {{ $t('side_panel.active') }} &horbar; {{ friendsGroup2.length }}
                                 div(v-show="isFriendsGroup2")
@@ -166,13 +166,13 @@ html
                                             .avatar
                                                 img(v-lazy="userImage(friend.ref)")
                                             .detail
-                                                span.name(v-if="!hideUserMemos && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
+                                                span.name(v-if="!hideNicknames && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
                                                 span.name(v-else v-text="friend.ref.displayName" :style="{'color':friend.ref.$userColour}")
                                                 span.extra(v-text="friend.ref.statusDescription" :link="false")
                                         template(v-else)
                                             span(v-text="friend.name || friend.id")
                                             el-button(type="text" icon="el-icon-close" size="mini" @click.stop="confirmDeleteFriend(friend.id)" style="margin-left:5px")
-                                .x-friend-group.x-link(@click="isFriendsGroup3 = !isFriendsGroup3" v-show="friendsGroup3.length")
+                                .x-friend-group.x-link(@click="isFriendsGroup3 = !isFriendsGroup3; saveFriendsGroupStates()" v-show="friendsGroup3.length")
                                     i.el-icon-arrow-right(:class="{ rotate: isFriendsGroup3 }")
                                     span(style="margin-left:5px") {{ $t('side_panel.offline') }} &horbar; {{ friendsGroup3.length }}
                                 div(v-show="isFriendsGroup3")
@@ -181,7 +181,7 @@ html
                                             .avatar
                                                 img(v-lazy="userImage(friend.ref)")
                                             .detail
-                                                span.name(v-if="!hideUserMemos && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
+                                                span.name(v-if="!hideNicknames && friend.$nickName" :style="{'color':friend.ref.$userColour}") {{ friend.ref.displayName }} ({{ friend.$nickName }})
                                                 span.name(v-else v-text="friend.ref.displayName" :style="{'color':friend.ref.$userColour}")
                                                 span.extra(v-text="friend.ref.statusDescription")
                                         template(v-else)
@@ -1106,6 +1106,7 @@ html
                                                         el-tooltip(placement="top")
                                                             template(#content)
                                                                 span {{ $t('dialog.group.info.role') }} {{ role.name }}
+                                                                br
                                                                 span {{ $t('dialog.group.info.role_description') }} {{ role.description }}
                                                                 br
                                                                 span(v-if="role.updatedAt") {{ $t('dialog.group.info.role_updated_at') }} {{ role.updatedAt | formatDate('long') }}
@@ -1365,7 +1366,7 @@ html
             el-dialog.x-dialog(:before-close="beforeDialogClose" @mousedown.native="dialogMouseDown" @mouseup.native="dialogMouseUp" ref="newInstanceDialog" :visible.sync="newInstanceDialog.visible" :title="$t('dialog.new_instance.header')" width="650px")
                 el-tabs(type="card" v-model="newInstanceDialog.selectedTab")
                     el-tab-pane(:label="$t('dialog.new_instance.normal')")
-                        el-form(v-if="newInstanceDialog.visible" :model="newInstanceDialog" label-width="130px")
+                        el-form(v-if="newInstanceDialog.visible" :model="newInstanceDialog" label-width="150px")
                             el-form-item(:label="$t('dialog.new_instance.access_type')")
                                 el-radio-group(v-model="newInstanceDialog.accessType" size="mini" @change="buildInstance")
                                     el-radio-button(label="public") {{ $t('dialog.new_instance.access_type_public') }}
@@ -1444,14 +1445,14 @@ html
                             el-form-item(:label="$t('dialog.new_instance.url')")
                                 el-input(v-model="newInstanceDialog.url" size="mini" readonly)
                     el-tab-pane(:label="$t('dialog.new_instance.group')")
-                        el-form(v-if="newInstanceDialog.visible" :model="newInstanceDialog" label-width="130px")
+                        el-form(v-if="newInstanceDialog.visible" :model="newInstanceDialog" label-width="150px")
                             el-form-item(:label="$t('dialog.new_instance.group_access_type')")
                                 el-radio-group(v-model="newInstanceDialog.groupAccessType" size="mini" @change="buildInstance")
                                     el-radio-button(label="members") {{ $t('dialog.new_instance.group_access_type_members') }}
                                     el-radio-button(label="plus") {{ $t('dialog.new_instance.group_access_type_plus') }}
                                     el-radio-button(label="public") {{ $t('dialog.new_instance.group_access_type_public') }}
                             el-form-item(:label="$t('dialog.new_instance.region')")
-                                el-radio-group(v-model="newInstanceDialog.region" size="mini" @change="buildInstance")
+                                el-radio-group(v-model="newInstanceDialog.groupRegion" size="mini" @change="buildInstance")
                                     el-radio-button(label="US West") {{ $t('dialog.new_instance.region_usw') }}
                                     el-radio-button(label="US East") {{ $t('dialog.new_instance.region_use') }}
                                     el-radio-button(label="Europe") {{ $t('dialog.new_instance.region_eu') }}
@@ -2393,10 +2394,10 @@ html
                     el-table-column(:label="$t('table.previous_instances.world')" prop="name" sortable)
                         template(v-once #default="scope")
                             location(:location="scope.row.location" :hint="scope.row.worldName" :grouphint="scope.row.groupName")
-                    el-table-column(:label="$t('table.previous_instances.instance_creator')" prop="location" width="160")
+                    el-table-column(:label="$t('table.previous_instances.instance_creator')" prop="location" width="170")
                         template(v-once #default="scope")
                             display-name(:userid="scope.row.$location.userId" :location="scope.row.$location.tag" :key="previousInstancesUserDialog.forceUpdate")
-                    el-table-column(:label="$t('table.previous_instances.time')" prop="time" width="90" sortable)
+                    el-table-column(:label="$t('table.previous_instances.time')" prop="time" width="100" sortable)
                         template(v-once #default="scope")
                             span(v-text="scope.row.timer")
                     el-table-column(:label="$t('table.previous_instances.action')" width="90" align="right")
@@ -2419,7 +2420,7 @@ html
                     el-table-column(:label="$t('table.previous_instances.instance_creator')" prop="location")
                         template(v-once #default="scope")
                             display-name(:userid="scope.row.$location.userId" :location="scope.row.$location.tag" :key="previousInstancesWorldDialog.forceUpdate")
-                    el-table-column(:label="$t('table.previous_instances.time')" prop="time" width="90" sortable)
+                    el-table-column(:label="$t('table.previous_instances.time')" prop="time" width="100" sortable)
                         template(v-once #default="scope")
                             span(v-text="scope.row.timer")
                     el-table-column(:label="$t('table.previous_instances.action')" width="90" align="right")
