@@ -1108,7 +1108,7 @@ speechSynthesis.getVoices();
             '<span>{{ $t("dialog.user.info.instance_game_version") }} {{ gameServerVersion }}</span></br>' +
             '<span v-if="queueEnabled">{{ $t("dialog.user.info.instance_queuing_enabled") }}</br></span>' +
             '<span v-if="userList.length">{{ $t("dialog.user.info.instance_users") }}</br></span>' +
-            '<span v-for="user in userList" style="cursor:pointer" @click="showUserDialog(user.id)" v-text="user.displayName"></br></span>' +
+            '<template v-for="user in userList"><span style="cursor:pointer;margin-right:5px" @click="showUserDialog(user.id)" v-text="user.displayName"></span></template>' +
             '</div>' +
             '<i class="el-icon-caret-bottom"></i>' +
             '</el-tooltip>' +
@@ -8157,7 +8157,7 @@ speechSynthesis.getVoices();
         );
         this.isFriendsGroup2 = await configRepository.getBool(
             'VRCX_isFriendsGroupActive',
-            true
+            false
         );
         this.isFriendsGroup3 = await configRepository.getBool(
             'VRCX_isFriendsGroupOffline',
@@ -22905,7 +22905,7 @@ speechSynthesis.getVoices();
             },
             cache_directory: {
                 name: $t('dialog.config_json.cache_directory'),
-                default: '%AppData%\\..\\LocalLow\\VRChat\\vrchat'
+                default: '%AppData%\\..\\LocalLow\\VRChat\\VRChat'
             },
             picture_output_folder: {
                 name: $t('dialog.config_json.picture_directory'),
@@ -27052,7 +27052,51 @@ speechSynthesis.getVoices();
         $app.getLocalWorldFavorites();
     });
 
-    // pending offline timer
+    $app.data.worldFavoriteSearch = '';
+    $app.data.worldFavoriteSearchResults = [];
+
+    $app.methods.searchWorldFavorites = function () {
+        var search = this.worldFavoriteSearch.toLowerCase();
+        if (search.length < 3) {
+            this.worldFavoriteSearchResults = [];
+            return;
+        }
+
+        var results = [];
+        for (var i = 0; i < this.localWorldFavoriteGroups.length; ++i) {
+            var group = this.localWorldFavoriteGroups[i];
+            if (!this.localWorldFavorites[group]) {
+                continue;
+            }
+            for (var j = 0; j < this.localWorldFavorites[group].length; ++j) {
+                var ref = this.localWorldFavorites[group][j];
+                if (
+                    ref.name.toLowerCase().includes(search) ||
+                    ref.authorName.toLowerCase().includes(search)
+                ) {
+                    results.push(ref);
+                }
+            }
+        }
+
+        for (var i = 0; i < this.favoriteWorlds.length; ++i) {
+            var ref = this.favoriteWorlds[i].ref;
+            if (!ref) {
+                continue;
+            }
+            if (
+                ref.name.toLowerCase().includes(search) ||
+                ref.authorName.toLowerCase().includes(search)
+            ) {
+                results.push(ref);
+            }
+        }
+
+        this.worldFavoriteSearchResults = results;
+    };
+
+    // #endregion
+    // #region | App: pending offline timer
 
     $app.methods.promptSetPendingOffline = function () {
         this.$prompt(
@@ -28351,26 +28395,22 @@ speechSynthesis.getVoices();
                             D.memberRoles.push(role);
                         }
                     }
-                    if (D.inGroup) {
-                        API.getAllGroupPosts({
-                            groupId
-                        }).then((args2) => {
-                            if (groupId === args2.params.groupId) {
-                                for (var post of args2.posts) {
-                                    post.title = this.replaceBioSymbols(
-                                        post.title
-                                    );
-                                    post.text = this.replaceBioSymbols(
-                                        post.text
-                                    );
-                                }
-                                if (args2.posts.length > 0) {
-                                    D.announcement = args2.posts[0];
-                                }
-                                D.posts = args2.posts;
-                                this.updateGroupPostSearch();
+                    API.getAllGroupPosts({
+                        groupId
+                    }).then((args2) => {
+                        if (groupId === args2.params.groupId) {
+                            for (var post of args2.posts) {
+                                post.title = this.replaceBioSymbols(post.title);
+                                post.text = this.replaceBioSymbols(post.text);
                             }
-                        });
+                            if (args2.posts.length > 0) {
+                                D.announcement = args2.posts[0];
+                            }
+                            D.posts = args2.posts;
+                            this.updateGroupPostSearch();
+                        }
+                    });
+                    if (D.inGroup) {
                         API.getGroupInstances({
                             groupId
                         }).then((args3) => {
