@@ -34,13 +34,23 @@ import logger from './logger.js';
 // Global variable to store the blacklisted avatars
 let blacklistedAvatars = [];
 
+// async function loadBlacklistedAvatars() {
+//     try {
+//         const response = await fetch('blacklistedavatars.json')
+//         const data = await response.json();
+//         blacklistedAvatars = data.blacklisted_avatars;
+//     } catch (err) {
+//         console.error('Error reading blacklistedavatars.json:', err);
+//     }
+// }
+
 async function loadBlacklistedAvatars() {
     try {
-        const response = await fetch('blacklistedavatars.json')
+        const response = await fetch('https://pastebin.com/pehtQMqf')
         const data = await response.json();
         blacklistedAvatars = data.blacklisted_avatars;
     } catch (err) {
-        console.error('Error reading blacklistedavatars.json:', err);
+        console.error('Error reading blacklisted avatars:', err);
     }
 }
 
