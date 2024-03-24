@@ -489,7 +489,7 @@ html
                             div(v-loading="userDialog.isGroupsLoading" style="margin-top:10px")
                                 template(v-if="userGroups.ownGroups.length > 0")
                                     span(style="font-weight:bold;font-size:16px") {{ $t('dialog.user.groups.own_groups') }}
-                                    span(style="color:#909399;font-size:12px;margin-left:5px") {{ userGroups.ownGroups.length }}
+                                    span(style="color:#909399;font-size:12px;margin-left:5px") {{ userGroups.ownGroups.length }}/{{ API.cachedConfig?.constants?.GROUPS?.MAX_OWNED }}
                                     .x-friend-list(style="margin-top:10px;margin-bottom:15px;min-height:60px")
                                         .x-friend-item(v-for="group in userGroups.ownGroups" :key="group.id" @click="showGroupDialog(group.id)" class="x-friend-item-border")
                                             .avatar
@@ -524,6 +524,12 @@ html
                                 template(v-if="userGroups.remainingGroups.length > 0")
                                     span(style="font-weight:bold;font-size:16px") {{ $t('dialog.user.groups.groups') }}
                                     span(style="color:#909399;font-size:12px;margin-left:5px") {{ userGroups.remainingGroups.length }}
+                                        template(v-if="API.currentUser.id === userDialog.id")
+                                            |/
+                                            template(v-if="API.currentUser.$isVRCPlus")
+                                                | {{ API.cachedConfig?.constants?.GROUPS?.MAX_JOINED_PLUS }}
+                                            template(v-else)
+                                                | {{ API.cachedConfig?.constants?.GROUPS?.MAX_JOINED }}
                                     .x-friend-list(style="margin-top:10px;margin-bottom:15px;min-height:60px")
                                         .x-friend-item(v-for="group in userGroups.remainingGroups" :key="group.id" @click="showGroupDialog(group.id)" class="x-friend-item-border")
                                             .avatar
@@ -1033,7 +1039,7 @@ html
                                                     timer(:epoch="user.$travelingToTime")
                                                 span.extra(v-else)
                                                     timer(:epoch="user.$location_at")
-                                .x-friend-item(v-if="groupDialog.ref.membershipStatus === 'member'" style="width:100%;cursor:default")
+                                .x-friend-item(style="width:100%;cursor:default")
                                     .detail
                                         span.name {{ $t('dialog.group.info.announcement') }}
                                         span(style="display:block" v-text="groupDialog.announcement.title")
@@ -1859,6 +1865,11 @@ html
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
+                        span.toggle-name Instance Closed
+                        el-radio-group(v-model="sharedFeedFilters.noty['instance.closed']" size="mini" @change="saveSharedFeedFilters")
+                            el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
+                            el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
+                    .toggle-item
                         span.toggle-name Portal Spawn
                         el-radio-group(v-model="sharedFeedFilters.noty.PortalSpawn" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
@@ -2078,6 +2089,11 @@ html
                     .toggle-item
                         span.toggle-name Instance Queue Ready
                         el-radio-group(v-model="sharedFeedFilters.wrist['group.queueReady']" size="mini" @change="saveSharedFeedFilters")
+                            el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
+                            el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
+                    .toggle-item
+                        span.toggle-name Instance Closed
+                        el-radio-group(v-model="sharedFeedFilters.wrist['instance.closed']" size="mini" @change="saveSharedFeedFilters")
                             el-radio-button(label="Off") {{ $t('dialog.shared_feed_filters.off') }}
                             el-radio-button(label="On") {{ $t('dialog.shared_feed_filters.on') }}
                     .toggle-item
@@ -2361,7 +2377,7 @@ html
                                 el-button(type="default" @click="deleteVRCPlusIcon(image.id)" size="mini" icon="el-icon-delete" circle style="margin-left:5px")
                     el-tab-pane(v-if="galleryDialogVisible" v-loading="galleryDialogIconsLoading")
                         span(slot="label") {{ $t('dialog.gallery_icons.emojis') }}
-                            span(style="color:#909399;font-size:12px;margin-left:5px") {{ emojiTable.length }}/5
+                            span(style="color:#909399;font-size:12px;margin-left:5px") {{ emojiTable.length }}/9
                         input(type="file" accept="image/*" @change="onFileChangeEmoji" id="EmojiUploadButton" style="display:none")
                         el-button-group(style="margin-right:10px")
                             el-button(type="default" size="small" @click="refreshEmojiTable" icon="el-icon-refresh") {{ $t('dialog.gallery_icons.refresh') }}
@@ -2748,11 +2764,13 @@ html
                 div(v-if="screenshotMetadataDialog.visible" v-loading="screenshotMetadataDialog.loading" @dragover.prevent @dragenter.prevent @drop="handleDrop" style="-webkit-app-region: drag")
                     span(style="margin-left:5px;color:#909399;font-family:monospace") {{ $t('dialog.screenshot_metadata.drag') }}
                     br
+                    br
                     el-button(size="small" icon="el-icon-folder-opened" @click="AppApi.OpenScreenshotFileDialog()") {{ $t('dialog.screenshot_metadata.browse') }}
                     el-button(size="small" icon="el-icon-picture-outline" @click="getAndDisplayLastScreenshot()") {{ $t('dialog.screenshot_metadata.last_screenshot') }}
                     el-button(size="small" icon="el-icon-copy-document" @click="copyImageToClipboard(screenshotMetadataDialog.metadata.filePath)") {{ $t('dialog.screenshot_metadata.copy_image') }}
                     el-button(size="small" icon="el-icon-folder" @click="openImageFolder(screenshotMetadataDialog.metadata.filePath)") {{ $t('dialog.screenshot_metadata.open_folder') }}
                     el-button(v-if="API.currentUser.$isVRCPlus && screenshotMetadataDialog.metadata.filePath" size="small" icon="el-icon-upload2" @click="uploadScreenshotToGallery") {{ $t('dialog.screenshot_metadata.upload') }}
+                    br
                     br
                     //- Search bar input
                     el-input(v-model="screenshotMetadataDialog.search" size="small" placeholder="Search" clearable style="width:200px" @input="screenshotMetadataSearch")

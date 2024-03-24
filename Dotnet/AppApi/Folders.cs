@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
@@ -156,6 +157,7 @@ namespace VRCX
         /// <param name="isFolder">Whether the specified path is a folder or not. Defaults to false.</param>
         public void OpenFolderAndSelectItem(string path, bool isFolder = false)
         {
+            path = Path.GetFullPath(path);
             // I don't think it's quite meant for it, but SHOpenFolderAndSelectItems can open folders by passing the folder path as the item to select, as a child to itself, somehow. So we'll check to see if 'path' is a folder as well.
             if (!File.Exists(path) && !Directory.Exists(path))
                 return;
@@ -170,6 +172,7 @@ namespace VRCX
             var result = WinApi.SHParseDisplayName(folderPath, IntPtr.Zero, out pidlFolder, 0, out psfgaoOut);
             if (result != 0)
             {
+                OpenFolderAndSelectItemFallback(path);
                 return;
             }
 
@@ -178,6 +181,7 @@ namespace VRCX
             {
                 // Free the PIDL we allocated earlier if we failed to parse the display name of the file.
                 Marshal.FreeCoTaskMem(pidlFolder);
+                OpenFolderAndSelectItemFallback(path);
                 return;
             }
 
@@ -189,11 +193,31 @@ namespace VRCX
                 // It can select multiple items, but we only need to select one. 
                 WinApi.SHOpenFolderAndSelectItems(pidlFolder, (uint)files.Length, files, 0);
             }
+            catch
+            {
+                OpenFolderAndSelectItemFallback(path);
+            }
             finally
             {
                 // Free the PIDLs we allocated earlier
                 Marshal.FreeCoTaskMem(pidlFolder);
                 Marshal.FreeCoTaskMem(pidlFile);
+            }
+        }
+        
+        public void OpenFolderAndSelectItemFallback(string path)
+        {
+            if (!File.Exists(path) && !Directory.Exists(path))
+                return;
+
+            if (Directory.Exists(path))
+            {
+                Process.Start("explorer.exe", path);
+            }
+            else
+            {
+                // open folder with file highlighted
+                Process.Start("explorer.exe", $"/select,\"{path}\"");
             }
         }
     }
