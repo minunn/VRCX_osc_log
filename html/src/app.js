@@ -2590,7 +2590,7 @@ speechSynthesis.getVoices();
                 return args;
             })
             .catch((err) => {
-                if (err.includes('Instance is closed.')) {
+                if (err && err.includes('Instance is closed.')) {
                     $app.$message({
                         message: 'Instance is closed.',
                         type: 'error'
@@ -6399,14 +6399,29 @@ speechSynthesis.getVoices();
         if (playNotificationTTS) {
             this.playNotyTTS(noty, message);
         }
-        if (playDesktopToast || playXSNotification || playOvrtHudNotifications || playOvrtWristNotifications || playOverlayNotification) {
+        if (
+            playDesktopToast ||
+            playXSNotification ||
+            playOvrtHudNotifications ||
+            playOvrtWristNotifications ||
+            playOverlayNotification
+        ) {
             if (this.imageNotifications) {
                 this.notySaveImage(noty).then((image) => {
                     if (playXSNotification) {
                         this.displayXSNotification(noty, message, image);
                     }
-                    if (playOvrtHudNotifications || playOvrtWristNotifications) {
-                        this.displayOvrtNotification(playOvrtHudNotifications, playOvrtWristNotifications, noty, message, image);
+                    if (
+                        playOvrtHudNotifications ||
+                        playOvrtWristNotifications
+                    ) {
+                        this.displayOvrtNotification(
+                            playOvrtHudNotifications,
+                            playOvrtWristNotifications,
+                            noty,
+                            message,
+                            image
+                        );
                     }
                     if (playDesktopToast) {
                         this.displayDesktopToast(noty, message, image);
@@ -6420,7 +6435,13 @@ speechSynthesis.getVoices();
                     this.displayXSNotification(noty, message, '');
                 }
                 if (playOvrtHudNotifications || playOvrtWristNotifications) {
-                    this.displayOvrtNotification(playOvrtHudNotifications, playOvrtWristNotifications, noty, message, '');
+                    this.displayOvrtNotification(
+                        playOvrtHudNotifications,
+                        playOvrtWristNotifications,
+                        noty,
+                        message,
+                        ''
+                    );
                 }
                 if (playDesktopToast) {
                     this.displayDesktopToast(noty, message, '');
