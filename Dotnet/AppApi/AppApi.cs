@@ -148,6 +148,16 @@ namespace VRCX
             VRCXVR.Instance.Restart();
         }
 
+        public void SetZoom(double zoomLevel)
+        {
+            MainForm.Instance.Browser.SetZoomLevel(zoomLevel);
+        }
+        
+        public async Task<double> GetZoom()
+        {
+            return await MainForm.Instance.Browser.GetZoomLevelAsync();
+        }
+
         /// <summary>
         /// Retrieves an image from the VRChat API and caches it for future use. The function will return the cached image if it already exists.
         /// </summary>
