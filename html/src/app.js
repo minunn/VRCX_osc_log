@@ -322,7 +322,7 @@ speechSynthesis.getVoices();
         ltz: 'lb',
         mar: 'hi',
         mkd: 'mk',
-        msa: 'id',
+        msa: 'my',
         sco: 'gd',
         slk: 'sk',
         slv: 'sl',
@@ -9095,9 +9095,9 @@ speechSynthesis.getVoices();
             });
         }
         if (typeof ref === 'undefined') {
-            ref = this.friendLog.get(id);
-            if (typeof ref !== 'undefined' && ref.displayName) {
-                ctx.name = ref.displayName;
+            var friendLogRef = this.friendLog.get(id);
+            if (friendLogRef?.displayName) {
+                ctx.name = friendLogRef.displayName;
             }
         } else {
             ctx.name = ref.name;
@@ -9105,22 +9105,22 @@ speechSynthesis.getVoices();
         this.friends.set(id, ctx);
         if (ctx.state === 'online') {
             if (ctx.isVIP) {
-                this.sortFriendsGroup0 = true;
                 this.friendsGroup0_.push(ctx);
                 this.friendsGroupA_.unshift(ctx);
+                this.sortFriendsGroup0 = true;
             } else {
-                this.sortFriendsGroup1 = true;
                 this.friendsGroup1_.push(ctx);
                 this.friendsGroupB_.unshift(ctx);
+                this.sortFriendsGroup1 = true;
             }
         } else if (ctx.state === 'active') {
-            this.sortFriendsGroup2 = true;
             this.friendsGroup2_.push(ctx);
             this.friendsGroupC_.unshift(ctx);
+            this.sortFriendsGroup2 = true;
         } else {
-            this.sortFriendsGroup3 = true;
             this.friendsGroup3_.push(ctx);
             this.friendsGroupD_.unshift(ctx);
+            this.sortFriendsGroup3 = true;
         }
     };
 
@@ -9222,12 +9222,12 @@ speechSynthesis.getVoices();
                     }
                     if (ctx.isVIP) {
                         removeFromArray(this.friendsGroupA_, ctx);
-                        this.sortFriendsGroup0 = true;
                         this.friendsGroupA_.unshift(ctx);
+                        this.sortFriendsGroup0 = true;
                     } else {
                         removeFromArray(this.friendsGroupB_, ctx);
-                        this.sortFriendsGroup0 = true;
                         this.friendsGroupB_.unshift(ctx);
+                        this.sortFriendsGroup0 = true;
                     }
                 } else if (ctx.state === 'active') {
                     removeFromArray(this.friendsGroupC_, ctx);
@@ -9243,15 +9243,15 @@ speechSynthesis.getVoices();
                     if (ctx.isVIP) {
                         removeFromArray(this.friendsGroup1_, ctx);
                         removeFromArray(this.friendsGroupB_, ctx);
-                        this.sortFriendsGroup0 = true;
                         this.friendsGroup0_.push(ctx);
                         this.friendsGroupA_.unshift(ctx);
+                        this.sortFriendsGroup0 = true;
                     } else {
                         removeFromArray(this.friendsGroup0_, ctx);
                         removeFromArray(this.friendsGroupA_, ctx);
-                        this.sortFriendsGroup1 = true;
                         this.friendsGroup1_.push(ctx);
                         this.friendsGroupB_.unshift(ctx);
+                        this.sortFriendsGroup1 = true;
                     }
                 }
             }
@@ -9313,7 +9313,6 @@ speechSynthesis.getVoices();
                     id,
                     ctx,
                     stateInput,
-                    isVIP,
                     location,
                     $location_at
                 );
@@ -9328,7 +9327,6 @@ speechSynthesis.getVoices();
                 id,
                 ctx,
                 stateInput,
-                isVIP,
                 location,
                 $location_at
             );
@@ -9339,7 +9337,6 @@ speechSynthesis.getVoices();
         id,
         ctx,
         stateInput,
-        isVIP,
         location,
         $location_at
     ) {
@@ -9361,6 +9358,7 @@ speechSynthesis.getVoices();
             }
             return;
         }
+        var isVIP = this.localFavoriteFriends.has(id);
         var newState = stateInput;
         var args = await API.getUser({
             userId: id
@@ -9441,22 +9439,22 @@ speechSynthesis.getVoices();
         }
         if (newState === 'online') {
             if (isVIP) {
-                this.sortFriendsGroup0 = true;
                 this.friendsGroup0_.push(ctx);
                 this.friendsGroupA_.unshift(ctx);
+                this.sortFriendsGroup0 = true;
             } else {
-                this.sortFriendsGroup1 = true;
                 this.friendsGroup1_.push(ctx);
                 this.friendsGroupB_.unshift(ctx);
+                this.sortFriendsGroup1 = true;
             }
         } else if (newState === 'active') {
-            this.sortFriendsGroup2 = true;
             this.friendsGroup2_.push(ctx);
             this.friendsGroupC_.unshift(ctx);
+            this.sortFriendsGroup2 = true;
         } else {
-            this.sortFriendsGroup3 = true;
             this.friendsGroup3_.push(ctx);
             this.friendsGroupD_.unshift(ctx);
+            this.sortFriendsGroup3 = true;
         }
         if (ctx.state !== newState) {
             this.updateOnlineFriendCoutner();
@@ -9516,12 +9514,12 @@ speechSynthesis.getVoices();
         if (typeof ctx.ref !== 'undefined' && ctx.state === 'online') {
             if (ctx.isVIP) {
                 removeFromArray(this.friendsGroupA_, ctx);
-                this.sortFriendsGroup1 = true;
                 this.friendsGroupA_.unshift(ctx);
+                this.sortFriendsGroup1 = true;
             } else {
                 removeFromArray(this.friendsGroupB_, ctx);
-                this.sortFriendsGroup0 = true;
                 this.friendsGroupB_.unshift(ctx);
+                this.sortFriendsGroup0 = true;
             }
         }
     };
@@ -10305,11 +10303,22 @@ speechSynthesis.getVoices();
             ref.$travelingToTime = Date.now();
             $app.updateFriendGPS(ref.id);
         }
+        var imageMatches = false;
         if (
-            ((props.currentAvatarImageUrl ||
+            props.currentAvatarThumbnailImageUrl &&
+            props.currentAvatarThumbnailImageUrl[0] &&
+            props.currentAvatarThumbnailImageUrl[1] &&
+            props.currentAvatarThumbnailImageUrl[0] ===
+                props.currentAvatarThumbnailImageUrl[1]
+        ) {
+            imageMatches = true;
+        }
+        if (
+            (((props.currentAvatarImageUrl ||
                 props.currentAvatarThumbnailImageUrl) &&
                 !ref.profilePicOverride) ||
-            props.currentAvatarTags
+                props.currentAvatarTags) &&
+            !imageMatches
         ) {
             var currentAvatarImageUrl = '';
             var previousCurrentAvatarImageUrl = '';
@@ -11931,7 +11940,8 @@ speechSynthesis.getVoices();
                             groupOnNameplate: user.groupOnNameplate,
                             showGroupBadgeToOthers: user.showGroupBadgeToOthers,
                             showSocialRank: user.showSocialRank,
-                            useImpostorAsFallback: user.useImpostorAsFallback
+                            useImpostorAsFallback: user.useImpostorAsFallback,
+                            platform: user.platform
                         });
                         this.photonUserJoin(id, user, gameLogDate);
                     }
@@ -11968,7 +11978,8 @@ speechSynthesis.getVoices();
                         groupOnNameplate: user.groupOnNameplate,
                         showGroupBadgeToOthers: user.showGroupBadgeToOthers,
                         showSocialRank: user.showSocialRank,
-                        useImpostorAsFallback: user.useImpostorAsFallback
+                        useImpostorAsFallback: user.useImpostorAsFallback,
+                        platform: user.platform
                     });
                     this.photonUserJoin(id, user, gameLogDate);
                 }
@@ -12002,7 +12013,8 @@ speechSynthesis.getVoices();
                     groupOnNameplate: user.groupOnNameplate,
                     showGroupBadgeToOthers: user.showGroupBadgeToOthers,
                     showSocialRank: user.showSocialRank,
-                    useImpostorAsFallback: user.useImpostorAsFallback
+                    useImpostorAsFallback: user.useImpostorAsFallback,
+                    platform: user.platform
                 });
                 break;
             case 255:
@@ -12052,7 +12064,8 @@ speechSynthesis.getVoices();
                         data.Parameters[249].showGroupBadgeToOthers,
                     showSocialRank: data.Parameters[249].showSocialRank,
                     useImpostorAsFallback:
-                        data.Parameters[249].useImpostorAsFallback
+                        data.Parameters[249].useImpostorAsFallback,
+                    platform: data.Parameters[249].platform
                 });
                 this.photonUserJoin(
                     data.Parameters[254],
@@ -15085,7 +15098,6 @@ speechSynthesis.getVoices();
             currentLocation = $app.lastLocationDestination;
         }
         if (!currentLocation) return;
-        var L = this.parseLocation(currentLocation);
         if (
             $app.autoAcceptInviteRequests === 'All Favorites' &&
             !$app.favoriteFriends.some((x) => x.id === ref.senderUserId)
@@ -15098,6 +15110,9 @@ speechSynthesis.getVoices();
         )
             return;
 
+        if (!this.checkCanInvite(currentLocation)) return;
+
+        var L = this.parseLocation(currentLocation);
         this.getCachedWorld({
             worldId: L.worldId
         }).then((args1) => {
@@ -15109,10 +15124,14 @@ speechSynthesis.getVoices();
                     rsvp: true
                 },
                 ref.senderUserId
-            ).then((_args) => {
-                $app.$message(`Auto invite sent to ${ref.senderUsername}`);
-                return _args;
-            });
+            )
+                .then((_args) => {
+                    $app.$message(`Auto invite sent to ${ref.senderUsername}`);
+                    return _args;
+                })
+                .catch((err) => {
+                    console.error(err);
+                });
         });
     });
 
@@ -18330,6 +18349,13 @@ speechSynthesis.getVoices();
         return { isPC, isQuest, isIos };
     };
 
+    $app.methods.replaceVrcPackageUrl = function (url) {
+        if (!url) {
+            return '';
+        }
+        return url.replace('https://api.vrchat.cloud/', 'https://vrchat.com/');
+    };
+
     $app.methods.selectCurrentInstanceRow = function (val) {
         if (val === null) {
             return;
@@ -19506,7 +19532,11 @@ speechSynthesis.getVoices();
                 this.showSetWorldTagsDialog();
                 break;
             case 'Download Unity Package':
-                this.openExternalLink(this.worldDialog.ref.unityPackageUrl);
+                this.openExternalLink(
+                    this.replaceVrcPackageUrl(
+                        this.worldDialog.ref.unityPackageUrl
+                    )
+                );
                 break;
             default:
                 this.$confirm(`Continue? ${command}`, 'Confirm', {
@@ -19810,7 +19840,11 @@ speechSynthesis.getVoices();
                 this.showSetAvatarTagsDialog(D.id);
                 break;
             case 'Download Unity Package':
-                this.openExternalLink(this.avatarDialog.ref.unityPackageUrl);
+                this.openExternalLink(
+                    this.replaceVrcPackageUrl(
+                        this.avatarDialog.ref.unityPackageUrl
+                    )
+                );
                 break;
             case 'Add Favorite':
                 this.showFavoriteDialog('avatar', D.id);
@@ -21771,8 +21805,8 @@ speechSynthesis.getVoices();
         if (!files.length) {
             return;
         }
-        if (files[0].size >= 10000000) {
-            // 10MB
+        if (files[0].size >= 100000000) {
+            // 100MB
             $app.$message({
                 message: 'File size too large',
                 type: 'error'
@@ -21838,8 +21872,8 @@ speechSynthesis.getVoices();
         if (!files.length) {
             return;
         }
-        if (files[0].size >= 10000000) {
-            // 10MB
+        if (files[0].size >= 100000000) {
+            // 100MB
             $app.$message({
                 message: 'File size too large',
                 type: 'error'
@@ -21847,7 +21881,7 @@ speechSynthesis.getVoices();
             this.clearInviteImageUpload();
             return;
         }
-        if (!files[0].type.match(/image.png/)) {
+        if (!files[0].type.match(/image.*/)) {
             $app.$message({
                 message: "File isn't a png",
                 type: 'error'
@@ -22602,14 +22636,27 @@ speechSynthesis.getVoices();
     $app.data.friendsListSearchFilters = [];
     $app.data.friendsListSelectAllCheckbox = false;
     $app.data.friendsListBulkUnfriendMode = false;
+    $app.data.friendsListBulkUnfriendForceUpdate = 0;
+
+    $app.methods.toggleFriendsListBulkUnfriendMode = function () {
+        if (!this.friendsListBulkUnfriendMode) {
+            this.friendsListTable.data.forEach((ref) => {
+                ref.$selected = false;
+            });
+        }
+    };
 
     $app.methods.showBulkUnfriendSelectionConfirm = function () {
-        var elementsTicked = 0;
-        for (var ctx of this.friendsListTable.data) {
-            if (ctx.$selected) {
-                elementsTicked++;
-            }
-        }
+        var pendingUnfriendList = this.friendsListTable.data.reduce(
+            (acc, ctx) => {
+                if (ctx.$selected) {
+                    acc.push(ctx.displayName);
+                }
+                return acc;
+            },
+            []
+        );
+        var elementsTicked = pendingUnfriendList.length;
         if (elementsTicked === 0) {
             return;
         }
@@ -22622,6 +22669,9 @@ speechSynthesis.getVoices();
                 confirmButtonText: 'Confirm',
                 cancelButtonText: 'Cancel',
                 type: 'info',
+                showInput: true,
+                inputType: 'textarea',
+                inputValue: pendingUnfriendList.join('\r\n'),
                 callback: (action) => {
                     if (action === 'confirm') {
                         this.bulkUnfriendSelection();
@@ -22682,8 +22732,8 @@ speechSynthesis.getVoices();
             if (typeof ctx.ref === 'undefined') {
                 continue;
             }
-            if (typeof ctx.$selected === 'undefined') {
-                ctx.$selected = false;
+            if (typeof ctx.ref.$selected === 'undefined') {
+                ctx.ref.$selected = false;
             }
             if (this.friendsListSearchFilterVIP && !ctx.isVIP) {
                 continue;
@@ -22852,6 +22902,11 @@ speechSynthesis.getVoices();
         return response;
     };
 
+    $app.methods.resizeImageToFitLimits = async function (file) {
+        var response = await AppApi.ResizeImageToFitLimits(file);
+        return response;
+    };
+
     $app.methods.genSig = async function (file) {
         var response = await AppApi.SignFile(file);
         return response;
@@ -22879,8 +22934,8 @@ speechSynthesis.getVoices();
             clearFile();
             return;
         }
-        if (files[0].size >= 10000000) {
-            // 10MB
+        if (files[0].size >= 100000000) {
+            // 100MB
             $app.$message({
                 message: 'File size too large',
                 type: 'error'
@@ -22888,7 +22943,7 @@ speechSynthesis.getVoices();
             clearFile();
             return;
         }
-        if (!files[0].type.match(/image.png/)) {
+        if (!files[0].type.match(/image.*/)) {
             $app.$message({
                 message: "File isn't a png",
                 type: 'error'
@@ -22900,7 +22955,8 @@ speechSynthesis.getVoices();
         this.changeAvatarImageDialogLoading = true;
         var r = new FileReader();
         r.onload = async function (file) {
-            var base64File = btoa(r.result);
+            var base64File = await $app.resizeImageToFitLimits(btoa(r.result));
+            // 10MB
             var fileMd5 = await $app.genMd5(base64File);
             var fileSizeInBytes = parseInt(file.total, 10);
             var base64SignatureFile = await $app.genSig(base64File);
@@ -23214,8 +23270,8 @@ speechSynthesis.getVoices();
             clearFile();
             return;
         }
-        if (files[0].size >= 10000000) {
-            // 10MB
+        if (files[0].size >= 100000000) {
+            // 100MB
             $app.$message({
                 message: 'File size too large',
                 type: 'error'
@@ -23223,7 +23279,7 @@ speechSynthesis.getVoices();
             clearFile();
             return;
         }
-        if (!files[0].type.match(/image.png/)) {
+        if (!files[0].type.match(/image.*/)) {
             $app.$message({
                 message: "File isn't a png",
                 type: 'error'
@@ -23235,7 +23291,8 @@ speechSynthesis.getVoices();
         this.changeWorldImageDialogLoading = true;
         var r = new FileReader();
         r.onload = async function (file) {
-            var base64File = btoa(r.result);
+            var base64File = await $app.resizeImageToFitLimits(btoa(r.result));
+            // 10MB
             var fileMd5 = await $app.genMd5(base64File);
             var fileSizeInBytes = parseInt(file.total, 10);
             var base64SignatureFile = await $app.genSig(base64File);
@@ -25078,6 +25135,10 @@ speechSynthesis.getVoices();
         this.userGroups.groups = args.json;
         for (var i = 0; i < args.json.length; ++i) {
             var group = args.json[i];
+            if (!group?.id) {
+                console.error('getUserGroups, group ID is missing', group);
+                continue;
+            }
             if (group.ownerId === userId) {
                 this.userGroups.ownGroups.unshift(group);
             }
@@ -25115,8 +25176,8 @@ speechSynthesis.getVoices();
     $app.methods.sortCurrentUserGroups = function () {
         var groupList = [];
         var sortGroups = function (a, b) {
-            var aIndex = groupList.indexOf(a.id);
-            var bIndex = groupList.indexOf(b.id);
+            var aIndex = groupList.indexOf(a?.id);
+            var bIndex = groupList.indexOf(b?.id);
             if (aIndex === -1 && bIndex === -1) {
                 return 0;
             }
@@ -25246,8 +25307,8 @@ speechSynthesis.getVoices();
         if (!files.length) {
             return;
         }
-        if (files[0].size >= 10000000) {
-            // 10MB
+        if (files[0].size >= 100000000) {
+            // 100MB
             $app.$message({
                 message: 'File size too large',
                 type: 'error'
@@ -25357,8 +25418,8 @@ speechSynthesis.getVoices();
         if (!files.length) {
             return;
         }
-        if (files[0].size >= 10000000) {
-            // 10MB
+        if (files[0].size >= 100000000) {
+            // 100MB
             $app.$message({
                 message: 'File size too large',
                 type: 'error'
@@ -26257,7 +26318,8 @@ speechSynthesis.getVoices();
                             groupOnNameplate: user.groupOnNameplate,
                             showGroupBadgeToOthers: user.showGroupBadgeToOthers,
                             showSocialRank: user.showSocialRank,
-                            useImpostorAsFallback: user.useImpostorAsFallback
+                            useImpostorAsFallback: user.useImpostorAsFallback,
+                            platform: user.platform
                         });
                     }
                 }
@@ -26314,7 +26376,7 @@ speechSynthesis.getVoices();
                 var data = input.replace(`import/${type}/`, '');
                 if (type === 'avatar') {
                     this.showAvatarImportDialog();
-                    this.worldImportDialog.input = data;
+                    this.avatarImportDialog.input = data;
                 } else if (type === 'world') {
                     this.showWorldImportDialog();
                     this.worldImportDialog.input = data;
@@ -28311,15 +28373,15 @@ speechSynthesis.getVoices();
             if (ctx.isVIP) {
                 removeFromArray(this.friendsGroup1_, ctx);
                 removeFromArray(this.friendsGroupB_, ctx);
-                this.sortFriendsGroup0 = true;
                 this.friendsGroup0_.push(ctx);
                 this.friendsGroupA_.unshift(ctx);
+                this.sortFriendsGroup0 = true;
             } else {
                 removeFromArray(this.friendsGroup0_, ctx);
                 removeFromArray(this.friendsGroupA_, ctx);
-                this.sortFriendsGroup1 = true;
                 this.friendsGroup1_.push(ctx);
                 this.friendsGroupB_.unshift(ctx);
+                this.sortFriendsGroup1 = true;
             }
         }
     };
