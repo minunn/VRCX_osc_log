@@ -1123,6 +1123,43 @@ speechSynthesis.getVoices();
         }
     });
 
+    Vue.component('last-join', {
+        template:
+            '<span>' +
+            '<el-tooltip placement="top" style="margin-left:5px" v-if="lastJoin">' +
+            '<div slot="content">' +
+            '<span>{{ $t("dialog.user.info.last_join") }} <timer :epoch="lastJoin"></timer></span>' +
+            '</div>' +
+            '<i v-if="lastJoin" class="el-icon el-icon-location-outline" style="display:inline-block"></i>' +
+            '</el-tooltip>' +
+            '</span>',
+        props: {
+            location: String,
+            currentlocation: String
+        },
+        data() {
+            return {
+                lastJoin: this.lastJoin
+            };
+        },
+        methods: {
+            parse() {
+                this.lastJoin = $app.instanceJoinHistory.get(this.location);
+            }
+        },
+        watch: {
+            location() {
+                this.parse();
+            },
+            currentlocation() {
+                this.parse();
+            }
+        },
+        created() {
+            this.parse();
+        }
+    });
+
     Vue.component('instance-info', {
         template:
             '<div style="display:inline-block;margin-left:5px">' +
@@ -10919,6 +10956,10 @@ speechSynthesis.getVoices();
                 }
                 break;
             case 'location':
+                this.addInstanceJoinHistory(
+                    this.lastLocation.location,
+                    gameLog.dt
+                );
                 var worldName = this.replaceBioSymbols(gameLog.worldName);
                 if (this.isGameRunning) {
                     this.lastLocationReset(gameLog.dt);
@@ -10938,6 +10979,7 @@ speechSynthesis.getVoices();
                     this.applyWorldDialogInstances();
                     this.applyGroupDialogInstances();
                 }
+                this.addInstanceJoinHistory(gameLog.location, gameLog.dt);
                 var L = API.parseLocation(gameLog.location);
                 var entry = {
                     created_at: gameLog.dt,
@@ -15874,6 +15916,10 @@ speechSynthesis.getVoices();
     if (!(await VRCXStorage.Get('VRCX_DatabaseLocation'))) {
         await VRCXStorage.Set('VRCX_DatabaseLocation', '');
     }
+    if (!(await VRCXStorage.Get('VRCX_ProxyServer'))) {
+        await VRCXStorage.Set('VRCX_ProxyServer', '');
+    }
+    $app.data.proxyServer = await VRCXStorage.Get('VRCX_ProxyServer');
     $app.data.disableWorldDatabase =
         (await VRCXStorage.Get('VRCX_DisableWorldDatabase')) === 'true';
     $app.methods.saveVRCXWindowOption = async function () {
@@ -19718,7 +19764,10 @@ speechSynthesis.getVoices();
         D.isQuest = false;
         D.isIos = false;
         D.hasImposter = false;
-        D.isFavorite = API.cachedFavoritesByObjectId.has(avatarId);
+        D.isFavorite =
+            API.cachedFavoritesByObjectId.has(avatarId) ||
+            (this.isLocalUserVrcplusSupporter() &&
+                this.localAvatarFavoritesList.includes(avatarId));
         D.isBlocked = API.cachedAvatarModerations.has(avatarId);
         this.ignoreAvatarMemoSave = true;
         D.memo = '';
@@ -19811,6 +19860,28 @@ speechSynthesis.getVoices();
             if (D.id === memo.avatarId) {
                 this.ignoreAvatarMemoSave = true;
                 D.memo = memo.memo;
+            }
+        });
+    };
+
+    $app.methods.selectAvatarWithConfirmation = function (id) {
+        this.$confirm(`Continue? Select Avatar`, 'Confirm', {
+            confirmButtonText: 'Confirm',
+            cancelButtonText: 'Cancel',
+            type: 'info',
+            callback: (action) => {
+                if (action !== 'confirm') {
+                    return;
+                }
+                API.selectAvatar({
+                    avatarId: id
+                }).then((args) => {
+                    this.$message({
+                        message: 'Avatar changed',
+                        type: 'success'
+                    });
+                    return args;
+                });
             }
         });
     };
@@ -27339,6 +27410,7 @@ speechSynthesis.getVoices();
         avatarIdList: new Set(),
         errors: '',
         avatarImportFavoriteGroup: null,
+        avatarImportLocalFavoriteGroup: null,
         importProgress: 0,
         importProgressTotal: 0
     };
@@ -27423,7 +27495,14 @@ speechSynthesis.getVoices();
 
     $app.methods.selectAvatarImportGroup = function (group) {
         var D = this.avatarImportDialog;
+        D.avatarImportLocalFavoriteGroup = null;
         D.avatarImportFavoriteGroup = group;
+    };
+
+    $app.methods.selectAvatarImportLocalGroup = function (group) {
+        var D = this.avatarImportDialog;
+        D.avatarImportFavoriteGroup = null;
+        D.avatarImportLocalFavoriteGroup = group;
     };
 
     $app.methods.cancelAvatarImport = function () {
@@ -27433,10 +27512,10 @@ speechSynthesis.getVoices();
 
     $app.methods.importAvatarImportTable = async function () {
         var D = this.avatarImportDialog;
-        D.loading = true;
-        if (!D.avatarImportFavoriteGroup) {
+        if (!D.avatarImportFavoriteGroup && !D.avatarImportLocalFavoriteGroup) {
             return;
         }
+        D.loading = true;
         var data = [...this.avatarImportTable.data].reverse();
         D.importProgressTotal = data.length;
         try {
@@ -27445,7 +27524,17 @@ speechSynthesis.getVoices();
                     break;
                 }
                 var ref = data[i];
-                await this.addFavoriteAvatar(ref, D.avatarImportFavoriteGroup);
+                if (D.avatarImportFavoriteGroup) {
+                    await this.addFavoriteAvatar(
+                        ref,
+                        D.avatarImportFavoriteGroup
+                    );
+                } else if (D.avatarImportLocalFavoriteGroup) {
+                    this.addLocalAvatarFavorite(
+                        ref.id,
+                        D.avatarImportLocalFavoriteGroup
+                    );
+                }
                 removeFromArray(this.avatarImportTable.data, ref);
                 D.avatarIdList.delete(ref.id);
                 D.importProgress++;
@@ -27464,9 +27553,11 @@ speechSynthesis.getVoices();
         $app.resetAvatarImport();
         $app.avatarImportDialog.visible = false;
         $app.avatarImportFavoriteGroup = null;
+        $app.avatarImportLocalFavoriteGroup = null;
 
         $app.avatarExportDialogVisible = false;
         $app.avatarExportFavoriteGroup = null;
+        $app.avatarExportLocalFavoriteGroup = null;
     });
 
     // #endregion
@@ -27476,12 +27567,14 @@ speechSynthesis.getVoices();
     $app.data.avatarExportDialogVisible = false;
     $app.data.avatarExportContent = '';
     $app.data.avatarExportFavoriteGroup = null;
+    $app.data.avatarExportLocalFavoriteGroup = null;
 
     $app.methods.showAvatarExportDialog = function () {
         this.$nextTick(() =>
             adjustDialogZ(this.$refs.avatarExportDialogRef.$el)
         );
         this.avatarExportFavoriteGroup = null;
+        this.avatarExportLocalFavoriteGroup = null;
         this.updateAvatarExportDialog();
         this.avatarExportDialogVisible = true;
     };
@@ -27494,23 +27587,54 @@ speechSynthesis.getVoices();
             return str;
         };
         var lines = ['AvatarID,Name'];
-        API.favoriteAvatarGroups.forEach((group) => {
-            if (
-                !this.avatarExportFavoriteGroup ||
-                this.avatarExportFavoriteGroup === group
-            ) {
-                $app.favoriteAvatars.forEach((ref) => {
-                    if (group.key === ref.groupKey) {
-                        lines.push(`${_(ref.id)},${_(ref.name)}`);
-                    }
-                });
+        if (this.avatarExportFavoriteGroup) {
+            API.favoriteAvatarGroups.forEach((group) => {
+                if (
+                    !this.avatarExportFavoriteGroup ||
+                    this.avatarExportFavoriteGroup === group
+                ) {
+                    $app.favoriteAvatars.forEach((ref) => {
+                        if (group.key === ref.groupKey) {
+                            lines.push(`${_(ref.id)},${_(ref.name)}`);
+                        }
+                    });
+                }
+            });
+        } else if (this.avatarExportLocalFavoriteGroup) {
+            var favoriteGroup =
+                this.localAvatarFavorites[this.avatarExportLocalFavoriteGroup];
+            if (!favoriteGroup) {
+                return;
             }
-        });
+            for (var i = 0; i < favoriteGroup.length; ++i) {
+                var ref = favoriteGroup[i];
+                lines.push(`${_(ref.id)},${_(ref.name)}`);
+            }
+        } else {
+            // export all
+            this.favoriteAvatars.forEach((ref1) => {
+                lines.push(`${_(ref1.id)},${_(ref1.name)}`);
+            });
+            for (var i = 0; i < this.localAvatarFavoritesList.length; ++i) {
+                var avatarId = this.localAvatarFavoritesList[i];
+                var ref2 = API.cachedAvatars.get(avatarId);
+                if (typeof ref2 !== 'undefined') {
+                    lines.push(`${_(ref2.id)},${_(ref2.name)}`);
+                }
+            }
+        }
         this.avatarExportContent = lines.join('\n');
     };
 
     $app.methods.selectAvatarExportGroup = function (group) {
         this.avatarExportFavoriteGroup = group;
+        this.avatarExportLocalFavoriteGroup = null;
+        this.updateAvatarExportDialog();
+    };
+
+    $app.methods.selectAvatarExportLocalGroup = function (group) {
+        this.avatarExportLocalFavoriteGroup = group;
+        this.avatarExportFavoriteGroup = null;
         this.updateAvatarExportDialog();
     };
 
@@ -28327,6 +28451,362 @@ speechSynthesis.getVoices();
         }
 
         this.worldFavoriteSearchResults = results;
+    };
+
+    // #endregion
+    // #region | App: Local Avatar Favorites
+
+    $app.methods.isLocalUserVrcplusSupporter = function () {
+        return API.currentUser.$isVRCPlus;
+    };
+
+    $app.data.localAvatarFavoriteGroups = [];
+    $app.data.localAvatarFavoritesList = [];
+    $app.data.localAvatarFavorites = {};
+
+    $app.methods.addLocalAvatarFavorite = function (avatarId, group) {
+        if (this.hasLocalAvatarFavorite(avatarId, group)) {
+            return;
+        }
+        var ref = API.cachedAvatars.get(avatarId);
+        if (typeof ref === 'undefined') {
+            return;
+        }
+        if (!this.localAvatarFavoritesList.includes(avatarId)) {
+            this.localAvatarFavoritesList.push(avatarId);
+        }
+        if (!this.localAvatarFavorites[group]) {
+            this.localAvatarFavorites[group] = [];
+        }
+        if (!this.localAvatarFavoriteGroups.includes(group)) {
+            this.localAvatarFavoriteGroups.push(group);
+        }
+        this.localAvatarFavorites[group].unshift(ref);
+        database.addAvatarToCache(ref);
+        database.addAvatarToFavorites(avatarId, group);
+        if (
+            this.favoriteDialog.visible &&
+            this.favoriteDialog.objectId === avatarId
+        ) {
+            this.updateFavoriteDialog(avatarId);
+        }
+        if (this.avatarDialog.visible && this.avatarDialog.id === avatarId) {
+            this.avatarDialog.isFavorite = true;
+        }
+    };
+
+    $app.methods.removeLocalAvatarFavorite = function (avatarId, group) {
+        var favoriteGroup = this.localAvatarFavorites[group];
+        for (var i = 0; i < favoriteGroup.length; ++i) {
+            if (favoriteGroup[i].id === avatarId) {
+                favoriteGroup.splice(i, 1);
+            }
+        }
+
+        // remove from cache if no longer in favorites
+        var avatarInFavorites = false;
+        for (var i = 0; i < this.localAvatarFavoriteGroups.length; ++i) {
+            var groupName = this.localAvatarFavoriteGroups[i];
+            if (!this.localAvatarFavorites[groupName] || group === groupName) {
+                continue;
+            }
+            for (
+                var j = 0;
+                j < this.localAvatarFavorites[groupName].length;
+                ++j
+            ) {
+                var id = this.localAvatarFavorites[groupName][j].id;
+                if (id === avatarId) {
+                    avatarInFavorites = true;
+                    break;
+                }
+            }
+        }
+        if (!avatarInFavorites) {
+            removeFromArray(this.localAvatarFavoritesList, avatarId);
+            database.removeAvatarFromCache(avatarId);
+        }
+        database.removeAvatarFromFavorites(avatarId, group);
+        if (
+            this.favoriteDialog.visible &&
+            this.favoriteDialog.objectId === avatarId
+        ) {
+            this.updateFavoriteDialog(avatarId);
+        }
+        if (this.avatarDialog.visible && this.avatarDialog.id === avatarId) {
+            this.avatarDialog.isFavorite =
+                API.cachedFavoritesByObjectId.has(avatarId);
+        }
+
+        // update UI
+        this.sortLocalAvatarFavorites();
+    };
+
+    API.$on('AVATAR', function (args) {
+        if ($app.localAvatarFavoritesList.includes(args.ref.id)) {
+            // update db cache
+            database.addAvatarToCache(args.ref);
+        }
+    });
+
+    API.$on('LOGIN', function () {
+        $app.getLocalAvatarFavorites();
+    });
+
+    $app.methods.getLocalAvatarFavorites = async function () {
+        this.localAvatarFavoriteGroups = [];
+        this.localAvatarFavoritesList = [];
+        this.localAvatarFavorites = {};
+        var avatarCache = await database.getAvatarCache();
+        for (var i = 0; i < avatarCache.length; ++i) {
+            var ref = avatarCache[i];
+            if (!API.cachedAvatars.has(ref.id)) {
+                API.applyAvatar(ref);
+            }
+        }
+        var favorites = await database.getAvatarFavorites();
+        for (var i = 0; i < favorites.length; ++i) {
+            var favorite = favorites[i];
+            if (!this.localAvatarFavoritesList.includes(favorite.avatarId)) {
+                this.localAvatarFavoritesList.push(favorite.avatarId);
+            }
+            if (!this.localAvatarFavorites[favorite.groupName]) {
+                this.localAvatarFavorites[favorite.groupName] = [];
+            }
+            if (!this.localAvatarFavoriteGroups.includes(favorite.groupName)) {
+                this.localAvatarFavoriteGroups.push(favorite.groupName);
+            }
+            var ref = API.cachedAvatars.get(favorite.avatarId);
+            if (typeof ref === 'undefined') {
+                ref = {
+                    id: favorite.avatarId
+                };
+            }
+            this.localAvatarFavorites[favorite.groupName].unshift(ref);
+        }
+        if (this.localAvatarFavoriteGroups.length === 0) {
+            // default group
+            this.localAvatarFavorites.Favorites = [];
+            this.localAvatarFavoriteGroups.push('Favorites');
+        }
+        this.sortLocalAvatarFavorites();
+    };
+
+    $app.methods.hasLocalAvatarFavorite = function (avatarId, group) {
+        var favoriteGroup = this.localAvatarFavorites[group];
+        if (!favoriteGroup) {
+            return false;
+        }
+        for (var i = 0; i < favoriteGroup.length; ++i) {
+            if (favoriteGroup[i].id === avatarId) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    $app.methods.getLocalAvatarFavoriteGroupLength = function (group) {
+        var favoriteGroup = this.localAvatarFavorites[group];
+        if (!favoriteGroup) {
+            return 0;
+        }
+        return favoriteGroup.length;
+    };
+
+    $app.methods.promptNewLocalAvatarFavoriteGroup = function () {
+        this.$prompt(
+            $t('prompt.new_local_favorite_group.description'),
+            $t('prompt.new_local_favorite_group.header'),
+            {
+                distinguishCancelAndClose: true,
+                confirmButtonText: $t('prompt.new_local_favorite_group.ok'),
+                cancelButtonText: $t('prompt.new_local_favorite_group.cancel'),
+                inputPattern: /\S+/,
+                inputErrorMessage: $t(
+                    'prompt.new_local_favorite_group.input_error'
+                ),
+                callback: (action, instance) => {
+                    if (action === 'confirm' && instance.inputValue) {
+                        this.newLocalAvatarFavoriteGroup(instance.inputValue);
+                    }
+                }
+            }
+        );
+    };
+
+    $app.methods.newLocalAvatarFavoriteGroup = function (group) {
+        if (this.localAvatarFavoriteGroups.includes(group)) {
+            $app.$message({
+                message: $t('prompt.new_local_favorite_group.message.error', {
+                    name: group
+                }),
+                type: 'error'
+            });
+            return;
+        }
+        if (!this.localAvatarFavorites[group]) {
+            this.localAvatarFavorites[group] = [];
+        }
+        if (!this.localAvatarFavoriteGroups.includes(group)) {
+            this.localAvatarFavoriteGroups.push(group);
+        }
+        this.sortLocalAvatarFavorites();
+    };
+
+    $app.methods.promptLocalAvatarFavoriteGroupRename = function (group) {
+        this.$prompt(
+            $t('prompt.local_favorite_group_rename.description'),
+            $t('prompt.local_favorite_group_rename.header'),
+            {
+                distinguishCancelAndClose: true,
+                confirmButtonText: $t(
+                    'prompt.local_favorite_group_rename.save'
+                ),
+                cancelButtonText: $t(
+                    'prompt.local_favorite_group_rename.cancel'
+                ),
+                inputPattern: /\S+/,
+                inputErrorMessage: $t(
+                    'prompt.local_favorite_group_rename.input_error'
+                ),
+                inputValue: group,
+                callback: (action, instance) => {
+                    if (action === 'confirm' && instance.inputValue) {
+                        this.renameLocalAvatarFavoriteGroup(
+                            instance.inputValue,
+                            group
+                        );
+                    }
+                }
+            }
+        );
+    };
+
+    $app.methods.renameLocalAvatarFavoriteGroup = function (newName, group) {
+        if (this.localAvatarFavoriteGroups.includes(newName)) {
+            $app.$message({
+                message: $t(
+                    'prompt.local_favorite_group_rename.message.error',
+                    { name: newName }
+                ),
+                type: 'error'
+            });
+            return;
+        }
+        this.localAvatarFavoriteGroups.push(newName);
+        this.localAvatarFavorites[newName] = this.localAvatarFavorites[group];
+
+        removeFromArray(this.localAvatarFavoriteGroups, group);
+        delete this.localAvatarFavorites[group];
+        database.renameAvatarFavoriteGroup(newName, group);
+        this.sortLocalAvatarFavorites();
+    };
+
+    $app.methods.promptLocalAvatarFavoriteGroupDelete = function (group) {
+        this.$confirm(`Delete Group? ${group}`, 'Confirm', {
+            confirmButtonText: 'Confirm',
+            cancelButtonText: 'Cancel',
+            type: 'info',
+            callback: (action) => {
+                if (action === 'confirm') {
+                    this.deleteLocalAvatarFavoriteGroup(group);
+                }
+            }
+        });
+    };
+
+    $app.methods.sortLocalAvatarFavorites = function () {
+        this.localAvatarFavoriteGroups.sort();
+        if (!this.sortFavorites) {
+            for (var i = 0; i < this.localAvatarFavoriteGroups.length; ++i) {
+                var group = this.localAvatarFavoriteGroups[i];
+                if (this.localAvatarFavorites[group]) {
+                    this.localAvatarFavorites[group].sort(compareByName);
+                }
+            }
+        }
+    };
+
+    $app.methods.deleteLocalAvatarFavoriteGroup = function (group) {
+        // remove from cache if no longer in favorites
+        var avatarIdRemoveList = new Set();
+        var favoriteGroup = this.localAvatarFavorites[group];
+        for (var i = 0; i < favoriteGroup.length; ++i) {
+            avatarIdRemoveList.add(favoriteGroup[i].id);
+        }
+
+        removeFromArray(this.localAvatarFavoriteGroups, group);
+        delete this.localAvatarFavorites[group];
+        database.deleteAvatarFavoriteGroup(group);
+
+        for (var i = 0; i < this.localAvatarFavoriteGroups.length; ++i) {
+            var groupName = this.localAvatarFavoriteGroups[i];
+            if (!this.localAvatarFavorites[groupName]) {
+                continue;
+            }
+            for (
+                var j = 0;
+                j < this.localAvatarFavorites[groupName].length;
+                ++j
+            ) {
+                var avatarId = this.localAvatarFavorites[groupName][j].id;
+                if (avatarIdRemoveList.has(avatarId)) {
+                    avatarIdRemoveList.delete(avatarId);
+                    break;
+                }
+            }
+        }
+
+        avatarIdRemoveList.forEach((id) => {
+            removeFromArray(this.localAvatarFavoritesList, id);
+            database.removeAvatarFromCache(id);
+        });
+    };
+
+    $app.data.avatarFavoriteSearch = '';
+    $app.data.avatarFavoriteSearchResults = [];
+
+    $app.methods.searchAvatarFavorites = function () {
+        var search = this.avatarFavoriteSearch.toLowerCase();
+        if (search.length < 3) {
+            this.avatarFavoriteSearchResults = [];
+            return;
+        }
+
+        var results = [];
+        for (var i = 0; i < this.localAvatarFavoriteGroups.length; ++i) {
+            var group = this.localAvatarFavoriteGroups[i];
+            if (!this.localAvatarFavorites[group]) {
+                continue;
+            }
+            for (var j = 0; j < this.localAvatarFavorites[group].length; ++j) {
+                var ref = this.localAvatarFavorites[group][j];
+                if (!ref || !ref.id) {
+                    continue;
+                }
+                if (
+                    ref.name.toLowerCase().includes(search) ||
+                    ref.authorName.toLowerCase().includes(search)
+                ) {
+                    results.push(ref);
+                }
+            }
+        }
+
+        for (var i = 0; i < this.favoriteAvatars.length; ++i) {
+            var ref = this.favoriteAvatars[i].ref;
+            if (!ref) {
+                continue;
+            }
+            if (
+                ref.name.toLowerCase().includes(search) ||
+                ref.authorName.toLowerCase().includes(search)
+            ) {
+                results.push(ref);
+            }
+        }
+
+        this.avatarFavoriteSearchResults = results;
     };
 
     // #endregion
@@ -33097,6 +33577,63 @@ speechSynthesis.getVoices();
             .replace('vrchat_', '')
             .replace(/_/g, ' ')
             .replace(/\b\w/g, (l) => l.toUpperCase());
+    };
+
+    // #endregion
+
+    // #region proxy settings
+
+    $app.methods.promptProxySettings = function () {
+        this.$prompt(
+            $t('prompt.proxy_settings.description'),
+            $t('prompt.proxy_settings.header'),
+            {
+                distinguishCancelAndClose: true,
+                confirmButtonText: $t('prompt.proxy_settings.restart'),
+                cancelButtonText: $t('prompt.proxy_settings.close'),
+                inputValue: this.proxyServer,
+                inputPlaceholder: $t('prompt.proxy_settings.placeholder'),
+                callback: async (action, instance) => {
+                    this.proxyServer = instance.inputValue;
+                    await VRCXStorage.Set('VRCX_ProxyServer', this.proxyServer);
+                    await VRCXStorage.Flush();
+                    await new Promise((resolve) => {
+                        workerTimers.setTimeout(resolve, 100);
+                    });
+                    if (action === 'confirm') {
+                        AppApi.RestartApplication();
+                    }
+                }
+            }
+        );
+    };
+
+    // #endregion
+
+    // #region instance join history
+
+    $app.data.instanceJoinHistory = new Map();
+
+    API.$on('LOGIN', function () {
+        $app.instanceJoinHistory = new Map();
+        $app.getInstanceJoinHistory();
+    });
+
+    $app.methods.getInstanceJoinHistory = async function () {
+        this.instanceJoinHistory = await database.getInstanceJoinHistory();
+    };
+
+    $app.methods.addInstanceJoinHistory = function (location, dateTime) {
+        if (!location || !dateTime) {
+            return;
+        }
+
+        if (this.instanceJoinHistory.has(location)) {
+            this.instanceJoinHistory.delete(location);
+        }
+
+        var epoch = new Date(dateTime).getTime();
+        this.instanceJoinHistory.set(location, epoch);
     };
 
     // #endregion

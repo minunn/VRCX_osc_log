@@ -20,6 +20,8 @@
             "login": "Login",
             "register": "Register",
             "forgotPassword": "Forgot Password?",
+            "updater": "Updater",
+            "proxy_settings": "Proxy settings",
             "field": {
                 "username": "Username or Email",
                 "password": "Password",
@@ -91,7 +93,11 @@
                 "new_group": "New Group"
             },
             "avatars": {
-                "header": "Avatars"
+                "header": "Avatars",
+                "search": "Search",
+                "vrchat_favorites": "VRChat Favorites",
+                "local_favorites": "Local Favorites (Requires VRC+)",
+                "new_group": "New Group"
             },
             "bulk_unfavorite_mode": "Bulk Unfavorite Mode",
             "bulk_unfavorite_selection": "Bulk Unfavorite Selection",
@@ -106,7 +112,8 @@
             "delete_tooltip": "Delete",
             "unavailable_tooltip": "Unavailable",
             "private": "Private",
-            "sort_by": "Sort By"
+            "sort_by": "Sort By",
+            "select_avatar_tooltip": "Select Avatar"
         },
         "friend_log": {
             "filter_placeholder": "Filter",
@@ -211,7 +218,8 @@
                     "header": "Application",
                     "startup": "Start at Windows startup",
                     "minimized": "Start as minimized state",
-                    "tray": "Close to tray"
+                    "tray": "Close to tray",
+                    "proxy": "Proxy settings"
                 },
                 "favorites": {
                     "header": "VRCX Favorite Friends",
@@ -594,6 +602,7 @@
                 "instance_queue": "Queue:",
                 "instance_users": "Users:",
                 "instance_game_version": "Game Version:",
+                "last_join": "Last Join:",
                 "instance_queuing_enabled": "Queuing Enabled",
                 "instance_creator": "Instance Creator",
                 "note": "Note",
@@ -770,7 +779,7 @@
             },
             "actions": {
                 "delete_cache_tooltip": "Delete avatar from cache",
-                "favorite_tooltip": "Add to favorites",
+                "favorite_tooltip": "Favorites",
                 "unfavorite_tooltip": "Remove from favorites",
                 "refresh": "Refresh",
                 "select": "Select Avatar",
@@ -908,7 +917,8 @@
         "favorite": {
             "header": "Choose Group",
             "vrchat_favorites": "VRChat Favorites",
-            "local_favorites": "Local Favorites"
+            "local_favorites": "Local Favorites",
+            "local_avatar_favorites": "Local Favorites (Requires VRC+)"
         },
         "invite": {
             "header": "Invite",
@@ -1600,6 +1610,13 @@
             "cancel": "Cancel",
             "save": "Save",
             "input_error": "Valid number is required"
+        },
+        "proxy_settings": {
+            "header": "Proxy Settings",
+            "description": "Enter proxy server address and port",
+            "placeholder": "127.0.0.1:8080",
+            "close": "Close",
+            "restart": "Restart"
         }
     },
     "table": {
