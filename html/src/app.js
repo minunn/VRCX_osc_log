@@ -5238,6 +5238,7 @@ speechSynthesis.getVoices();
 
             case 'content-refresh':
                 var contentType = content.contentType;
+                console.log('content-refresh', content);
                 if (contentType === 'icon') {
                     if ($app.galleryDialogVisible) {
                         $app.refreshVRCPlusIconsTable();
@@ -5254,6 +5255,8 @@ speechSynthesis.getVoices();
                     // hmm, utilizing this might be too spamy and cause UI to move around
                 } else if (contentType === 'world') {
                     // hmm
+                } else if (contentType === 'created') {
+                    // on avatar upload
                 } else {
                     console.log('Unknown content-refresh', content);
                 }
@@ -8040,6 +8043,24 @@ speechSynthesis.getVoices();
         if (index === 'notification') {
             this.unseenNotifications = [];
         }
+
+        workerTimers.setTimeout(() => {
+            // fix some weird sorting bug when disabling data tables
+            if (
+                typeof this.$refs.playerModerationTableRef?.sortData !==
+                'undefined'
+            ) {
+                this.$refs.playerModerationTableRef.sortData.prop = 'created';
+            }
+            if (
+                typeof this.$refs.notificationTableRef?.sortData !== 'undefined'
+            ) {
+                this.$refs.notificationTableRef.sortData.prop = 'created_at';
+            }
+            if (typeof this.$refs.friendLogTableRef?.sortData !== 'undefined') {
+                this.$refs.friendLogTableRef.sortData.prop = 'created_at';
+            }
+        }, 100);
     };
 
     $app.data.twoFactorAuthDialogVisible = false;
@@ -30874,7 +30895,6 @@ speechSynthesis.getVoices();
                     });
                     var ref = API.applyGroup(args.json);
                     API.currentUserGroups.set(groupId, ref);
-                    console.log(`Fetched group ${ref.name}`);
                 } catch (err) {
                     console.error(err);
                 }
