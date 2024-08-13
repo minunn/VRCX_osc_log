@@ -1,5 +1,8 @@
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using CefSharp;
 using Microsoft.Win32;
@@ -15,7 +18,7 @@ namespace VRCX
 
             CheckGameRunning();
         }
-        
+
         /// <summary>
         /// Checks if the VRChat game and SteamVR are currently running and updates the browser's JavaScript function $app.updateIsGameRunning with the results.
         /// </summary>
@@ -40,7 +43,7 @@ namespace VRCX
             if (MainForm.Instance?.Browser != null && !MainForm.Instance.Browser.IsLoading && MainForm.Instance.Browser.CanExecuteJavascriptInMainFrame)
                 MainForm.Instance.Browser.ExecuteScriptAsync("$app.updateIsGameRunning", isGameRunning, isSteamVRRunning, isHmdAfk);
         }
-        
+
         /// <summary>
         /// Kills the VRChat process if it is currently running.
         /// </summary>
@@ -52,6 +55,92 @@ namespace VRCX
                 processes[0].Kill();
 
             return processes.Length;
+        }
+
+        /// <summary>
+        /// Kills the install.exe process after exiting game.
+        /// </summary>
+        /// <returns>Whether the process is killed (true or false).</returns>
+        public bool KillInstall()
+        {
+            bool isSuccess = false;
+            var processes = Process.GetProcessesByName("install");
+            foreach (var p in processes)
+            {
+                // "E:\SteamLibrary\steamapps\common\VRChat\install.exe"
+                var match = Regex.Match(GetProcessName(p.Id), "(.+?\\\\VRChat.*)(!?\\\\install.exe)");
+                if (match.Success)
+                {
+                    // Sometimes install.exe is suspended
+                    ResumeProcess(p.Id);
+                    p.Kill();
+                    isSuccess = true;
+                    break;
+                }
+            }
+
+            return isSuccess;
+        }
+
+        [DllImport("ntdll.dll")]
+        private static extern uint NtResumeProcess([In] IntPtr processHandle);
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern bool QueryFullProcessImageName(IntPtr hProcess, uint dwFlags, [Out, MarshalAs(UnmanagedType.LPTStr)] StringBuilder lpExeName, ref uint lpdwSize);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr OpenProcess(uint processAccess, bool inheritHandle, int processId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CloseHandle([In] IntPtr handle);
+
+        public static void ResumeProcess(int processId)
+        {
+            IntPtr hProc = IntPtr.Zero;
+            try
+            {
+                // Gets the handle to the Process
+                // 0x800 mean required to suspend or resume a process.
+                hProc = OpenProcess(0x800, false, processId);
+                if (hProc != IntPtr.Zero)
+                    NtResumeProcess(hProc);
+            }
+            finally
+            {
+                // close handle.
+                if (hProc != IntPtr.Zero)
+                    CloseHandle(hProc);
+            }
+        }
+
+        public static string GetProcessName(int pid)
+        {
+            IntPtr hProc = IntPtr.Zero;
+            try
+            {
+                // 0x400 mean required to retrieve certain information about a process, such as its token, exit code, and priority class.
+                // 0x10 mean required to read memory in a process using ReadProcessMemory.
+                hProc = OpenProcess(0x400 | 0x10, false, pid);
+                if (hProc != IntPtr.Zero)
+                {
+                    int lengthSb = 4000;
+                    uint lpSize = 65535;
+                    var sb = new StringBuilder(lengthSb);
+                    string result = String.Empty;
+                    if (QueryFullProcessImageName(hProc, 0, sb, ref lpSize))
+                    {
+                        result = sb.ToString();
+                    }
+                    return result;
+                }
+            }
+            finally
+            {
+                if (hProc != IntPtr.Zero)
+                    CloseHandle(hProc);
+            }
+            return String.Empty;
         }
 
         /// <summary>
@@ -71,13 +160,13 @@ namespace VRCX
                     var path = match.Groups[1].Value;
                     // var _arguments = Uri.EscapeDataString(arguments);
                     Process.Start(new ProcessStartInfo
-                        {
-                            WorkingDirectory = path,
-                            FileName = $"{path}\\steam.exe",
-                            UseShellExecute = false,
-                            Arguments = $"-applaunch 438100 {arguments}"
-                        })
-                        ?.Close();
+                    {
+                        WorkingDirectory = path,
+                        FileName = $"{path}\\steam.exe",
+                        UseShellExecute = false,
+                        Arguments = $"-applaunch 438100 {arguments}"
+                    })
+                    ?.Close();
                     return true;
                 }
             }
