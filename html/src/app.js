@@ -12340,6 +12340,8 @@ speechSynthesis.getVoices();
                 };
                 logger.log("💬 " + this.getDisplayNameFromPhotonId(photonId) + ' has said ' + text);
                 logger.info("💬 " + this.getDisplayNameFromPhotonId(photonId) + ' has said ' + text);
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("💬 " + "[" + currentWorldName + "] " + "["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+">) has said " +text);
                 this.queueGameLogNoty(entry);
                 this.addGameLog(entry);
                 break;
@@ -12403,6 +12405,7 @@ speechSynthesis.getVoices();
                     });
                     logger.log(text);
                     logger.info(text);
+                    logger.discord(text);
                     this.photonLobbyActivePortals.delete(portalId);
                 } else if (data.Parameters[245][0] === 23) {
                     var portalId = data.Parameters[245][1];
@@ -12451,6 +12454,8 @@ speechSynthesis.getVoices();
                 const emoji = emojiMap[emojiName];
                 logger.log(`${emoji} ${this.getDisplayNameFromPhotonId(photonId)} has used an emoji ${emojiName}`);
                 logger.info(`${emoji} ${this.getDisplayNameFromPhotonId(photonId)} has used an emoji ${emojiName}`);
+                var currentWorldName = this.lastLocation.name;
+                logger.discord(`${emoji} `+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has used an emoji ${emojiName}`);
                 break;
         }
     };
@@ -12483,10 +12488,14 @@ speechSynthesis.getVoices();
                     var text = 'EnableCamera';
                     logger.log("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
                     logger.info("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
+                    var currentWorldName = this.lastLocation.name;
+                    logger.discord("📷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has enabled their camera`);
                 } else if (eventData.Data[0] === false) {
                     var text = 'DisableCamera';
                     logger.log("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
                     logger.info("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
+                    var currentWorldName = this.lastLocation.name;
+                    logger.discord("📷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has disabled their camera`);
                 }
                 type = 'Camera';
             } else if (eventData.EventName === 'PhotoCapture') {
@@ -12494,19 +12503,27 @@ speechSynthesis.getVoices();
                 type = 'Camera';
                 logger.log("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
                 logger.info("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("📸 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has taken a photo`);
             } else if (eventData.EventName === 'TimerBloop') {
                 var text = 'TimerBloop';
                 type = 'Camera';
                 logger.log("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
                 logger.info("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("📸 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has used a timer`);
             } else if (eventData.EventName === 'ReloadAvatarNetworkedRPC') {
                 var text = 'AvatarReset';
                 logger.log("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
                 logger.info("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("🤷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has reset their avatar`);
             } else if (eventData.EventName === 'ReleaseBones') {
                 var text = 'ResetPhysBones';
                 logger.log("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
                 logger.info("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("🤷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has reset their physics bones`);
             } else if (eventData.EventName === 'SpawnEmojiRPC') {
                 var text = this.oldPhotonEmojis[eventData.Data];
                 type = 'SpawnEmoji';
@@ -12576,6 +12593,8 @@ speechSynthesis.getVoices();
         });
         logger.log("🕳️ "+ref.displayName + ' has spawned a ' + portalType + ' portal to ' + worldName);
         logger.info("🕳️ "+ref.displayName + ' has spawned a ' + portalType + ' portal to ' + worldName);
+        var currentWorldName = this.lastLocation.name;
+        logger.discord("🕳️ "+"["+currentWorldName+"] ["+ref.displayName+"]("+"<https://vrchat.com/home/user/"+ref.id+`>) has spawned a ${portalType} portal to ${worldName}`);
     };
 
     $app.methods.addPhotonPortalSpawn = async function (
@@ -12627,6 +12646,8 @@ speechSynthesis.getVoices();
         });
         logger.log("🕳️ "+this.getDisplayName(userId) + ' has spawned a portal to ' + displayLocation);
         logger.info("🕳️ "+this.getDisplayName(userId) + ' has spawned a portal to ' + displayLocation);
+        var currentWorldName = this.lastLocation.name;
+        logger.discord("🕳️ "+"["+currentWorldName+"] ["+this.getDisplayName(userId)+"]("+"<https://vrchat.com/home/user/"+userId+`>) has spawned a portal to ${displayLocation}`);
     };
 
     $app.methods.addPhotonEventToGameLog = function (entry) {
@@ -12667,6 +12688,8 @@ speechSynthesis.getVoices();
                 });
                 logger.log("👁️‍🗨️ "+this.getDisplayNameFromPhotonId(photonId) + ' has become the new master');
                 logger.info("👁️‍🗨️ "+this.getDisplayNameFromPhotonId(photonId) + ' has become the new master');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("👁️‍🗨️ "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has become the new master`);
             }
             this.photonLobbyMaster = photonId;
         }
@@ -12789,6 +12812,8 @@ speechSynthesis.getVoices();
             const status = statusMap[photonUser.status];
             logger.log("✍️ "+this.getDisplayNameFromPhotonId(photonId) + ' has changed their status to ' + status + ' ' + photonUser.statusDescription);
             logger.info("✍️ "+this.getDisplayNameFromPhotonId(photonId) + ' has changed their status to ' + status + ' ' + photonUser.statusDescription);
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("✍️ "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has changed their status to ${status} ${photonUser.statusDescription}`);
        
        //if user has 10 fps for more than 3 min
        var lastEvent = this.photonEvent7List.get(parseInt(photonId, 10));
@@ -12804,6 +12829,8 @@ speechSynthesis.getVoices();
                 });
                 logger.log("🚨 "+this.getDisplayNameFromPhotonId(photonId) + ' has not sent any events for more than 3 min he is probably a bot !');
                 logger.info("🚨 "+this.getDisplayNameFromPhotonId(photonId) + ' has not sent any events for more than 3 min he is probably a bot !');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("🚨 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has not sent any events for more than 3 min he is probably a bot !`);
                 }
             }
         }
@@ -12830,18 +12857,24 @@ speechSynthesis.getVoices();
             platform = 'Android';
             logger.log("🤖 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Android with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("🤖 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Android with ' + avatar.name + ' by ' + avatar.authorName);
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("🤖 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined on Android with `+"[" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">)");
             logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
 
         } else if (user.last_platform === 'ios') {
             platform = 'iOS';
             logger.log("🍎 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on iOS with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("🍎 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on iOS with ' + avatar.name + ' by ' + avatar.authorName);
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("🍎 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined on iOS with `+"[" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">)");
             logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
 
         } else if (user.inVRMode) {
             platform = 'VR';
             logger.log("🎧 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("🎧 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined in VR with ' + avatar.name + ' by ' + avatar.authorName);
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("🎧 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined in VR with `+"[" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">)");
             logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
 
             //check if user has moderation permissions
@@ -12849,12 +12882,16 @@ speechSynthesis.getVoices();
             platform = 'Moderator';
             logger.log("⚒️ "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("⚒️ "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with moderation access with ' + avatar.name + ' by ' + avatar.authorName);
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("⚒️ "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined with moderation access with `+"[" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">)");
             logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
             //check if avatar.id is in the list of blacklisted avatars in the json file blacklistedavatars.json
         } else { 
             platform = 'Desktop';
             logger.log("💻 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
             logger.info("💻 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined on Desktop with ' + avatar.name + ' by ' + avatar.authorName);
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("💻 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined on Desktop with `+"[" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">)");
             logger.avtr("INFO :  || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"`  || ");
         }
         this.photonUserSusieCheck(photonId, user, gameLogDate);
@@ -12863,6 +12900,8 @@ speechSynthesis.getVoices();
         if (blacklistedAvatars.includes(avatar.id)) {
             logger.log("🚫 "+this.getDisplayNameFromPhotonId(photonId) + ' has joined with avatar crash ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted'+'\n avatar id : '+avatar.id+'\n user id: '+this.getUserIdFromPhotonId(photonId));
             logger.info("🚫 "+this.getDisplayNameFromPhotonId(photonId) + ' has been detected with avatar crash ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted');
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("🚫 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined with avatar crash `+"[" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">)");
             // logger.avtr("`"+avatar.id+'\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n'+avatar.imageUrl+'\n'+avatar.thumbnailImageUrl+"`");
         }
         this.checkVRChatCache(avatar).then((cacheInfo) => {
@@ -12888,10 +12927,14 @@ speechSynthesis.getVoices();
             text = `Moderator has joined ${user.modTag}`;
             logger.log("⚒️"+this.getDisplayNameFromPhotonId(photonId) + ' has joined as a moderator');
             logger.info("⚒️"+this.getDisplayNameFromPhotonId(photonId) + ' has joined as a moderator');
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("⚒️"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined as a moderator`);
         } else if (user.isInvisible) {
             text = 'User joined invisible';
             logger.log("🤫"+this.getDisplayNameFromPhotonId(photonId) + ' has joined invisible');
             logger.info("🤫"+this.getDisplayNameFromPhotonId(photonId) + ' has joined invisible');
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("🤫"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has joined invisible`);
         }
         if (text) {
             this.addEntryPhotonEvent({
@@ -12927,6 +12970,8 @@ speechSynthesis.getVoices();
                 text = `has timed out after ${timeToText(timeSinceLastEvent)}`;
                 logger.log("🚫"+this.getDisplayNameFromPhotonId(photonId) + ' has timed out after ' + timeToText(timeSinceLastEvent) + ' seconds');
                 logger.info("🚫"+this.getDisplayNameFromPhotonId(photonId) + ' has timed out after ' + timeToText(timeSinceLastEvent) + ' seconds');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("🚫"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has timed out after ${timeToText(timeSinceLastEvent)}`);
             }
         }
         this.photonLobbyActivePortals.forEach((portal) => {
@@ -12934,6 +12979,8 @@ speechSynthesis.getVoices();
                 text = `has left through portal to "${portal.worldName}"`;
                 logger.log("💫"+this.getDisplayNameFromPhotonId(photonId) + ' has left through portal to ' + portal.worldName);
                 logger.info("💫"+this.getDisplayNameFromPhotonId(photonId) + ' has left through portal to ' + portal.worldName);
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("💫"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has left through portal to ${portal.worldName}`);
                 portal.pendingLeave--;
             }
         });
@@ -12945,6 +12992,8 @@ speechSynthesis.getVoices();
         });
         logger.log("🚪👈"+this.getDisplayNameFromPhotonId(photonId) + ' has left');
         logger.info("🚪👈"+this.getDisplayNameFromPhotonId(photonId) + ' has left');
+        var currentWorldName = this.lastLocation.name;
+        logger.discord("🚪👈"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has left`);
     };
 
     $app.methods.photonModerationUpdate = function (
@@ -12963,11 +13012,15 @@ speechSynthesis.getVoices();
                 text = 'Blocked';
                 logger.log("🤡"+this.getDisplayNameFromPhotonId(photonId) + ' has blocked me');
                 logger.info("🤡"+this.getDisplayNameFromPhotonId(photonId) + ' has blocked me');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("🤡"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has blocked me`);
             } else if (mute) {
                 type = 'Muted';
                 text = 'Muted';
                 logger.log("🤡"+this.getDisplayNameFromPhotonId(photonId) + ' has muted me');
                 logger.info("🤡"+this.getDisplayNameFromPhotonId(photonId) + ' has muted me');
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("🤡"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has muted me`);
             }
             if (row.userId) {
                 if (!block && row.block) {
@@ -12975,11 +13028,15 @@ speechSynthesis.getVoices();
                     text = 'Unblocked';
                     logger.log("🙊"+this.getDisplayNameFromPhotonId(photonId) + ' has unblocked me');
                     logger.info("🙊"+this.getDisplayNameFromPhotonId(photonId) + ' has unblocked me');
+                    var currentWorldName = this.lastLocation.name;
+                    logger.discord("🙊"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has unblocked me`);
                 } else if (!mute && row.mute) {
                     type = 'Unmuted';
                     text = 'Unmuted';
                     logger.log("🙊"+this.getDisplayNameFromPhotonId(photonId) + ' has unmuted me');
                     logger.info("🙊"+this.getDisplayNameFromPhotonId(photonId) + ' has unmuted me');
+                    var currentWorldName = this.lastLocation.name;
+                    logger.discord("🙊"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has unmuted me`);
                 }
                 if (block === row.block && mute === row.mute) {
                     // no change
@@ -13094,13 +13151,19 @@ speechSynthesis.getVoices();
                     inCache
                 });
                 logger.log("🧒 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName);
-                logger.info("🧒 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName);
-                //give the avatar info with return line
+                logger.info("🧒 "+"["+user.displayName+"](" + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName);
+                //get current world name
+                var currentWorldName = this.lastLocation.name;
+
+                //message for discord with discord format
+                logger.discord("🧒 "+"["+currentWorldName+"] ["+user.displayName+"]("+"<https://vrchat.com/home/user/"+user.id+">) has changed their avatar to [" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">)");
+                //give the avatar info with return line 
                     logger.avtr("INFO : || `"+avatar.id+'`\n'+avatar.name+'\n'+avatar.authorName+'\n'+avatar.releaseStatus+'\n `'+avatar.imageUrl+"` || ");
             //check if avatar.id is in the list of blacklisted avatars in the json file blacklistedavatars.json
                 if (blacklistedAvatars.includes(avatar.id)) {
                     logger.log("🚫 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted'+'\n avatar id : '+avatar.id+'\n user id: '+this.getUserIdFromPhotonId(photonId));
                     logger.info("🚫 "+user.displayName + ' has changed their avatar to ' + avatar.name + ' by ' + avatar.authorName + ' which is blacklisted'+'\n avatar id : '+avatar.id+'\n user id: '+this.getUserIdFromPhotonId(photonId));
+                    logger.discord("🚫 "+"["+currentWorldName+"] ["+user.displayName+"]("+"<https://vrchat.com/home/user/"+user.id+">) has changed their avatar to [" + avatar.name +"]("+"<https://vrchat.com/home/avatar/"+avatar.id+">) made by ["+ avatar.authorName + "]("+"<https://vrchat.com/home/user/"+avatar.authorId+">) which is blacklisted");
                 }
             });
         }
@@ -13141,6 +13204,8 @@ speechSynthesis.getVoices();
             });
             logger.log("💌"+user.displayName + ' has changed their group to ' + groupName);
             logger.info("💌"+user.displayName + ' has changed their group to ' + groupName);
+            var currentWorldName = this.lastLocation.name;
+            logger.discord("💌"+"["+currentWorldName+"] ["+user.displayName+"]("+"<https://vrchat.com/home/user/"+user.id+">) has changed their group to " + groupName);
         }
     };
 
@@ -13258,6 +13323,8 @@ speechSynthesis.getVoices();
         }
         logger.log('💎 Video playing in the world ' + videoUrl + ' by ' + displayName);
         logger.info('💎 Video playing in the world ' + videoUrl + ' by ' + displayName);
+        var currentWorldName = this.lastLocation.name;
+        logger.discord('💎 [' + currentWorldName + '] [' + displayName + '](' + '<https://vrchat.com/home/user/' + userId + '>) is playing a video ' + videoUrl);
     };
 
     $app.methods.addGameLogPyPyDance = function (gameLog, location) {
@@ -26250,13 +26317,12 @@ speechSynthesis.getVoices();
                     console.log('Game closed, skipped event', data);
                     return;
                 }
-                if (this.debugPhotonLogging) {
                     console.log(
                         'OnEvent',
                         data.OnEventData.Code,
                         data.OnEventData
                     );
-                }
+                    logger.events('OnEvent ' + data.OnEventData.Code + ' ' + JSON.stringify(data.OnEventData));
                 this.parsePhotonEvent(data.OnEventData, data.dt);
                 this.photonEventPulse();
                 break;

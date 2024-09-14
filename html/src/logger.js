@@ -13,6 +13,17 @@ class Logger {
       this.sendToServer(logEntry);
   }
 
+  discord(message) {
+    const logEntry = `[DISCORD] ${message}`;
+      this.sendToServer(logEntry);
+  }
+
+  events(message) {
+    const logEntry = `[EVENTS] ${message}`;
+    console.log(logEntry);
+      this.sendToServer(logEntry);
+  }
+
   command(message) {
     const logEntry = `[COMMAND] ${message}`;
       this.sendToServer(logEntry);
