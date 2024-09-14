@@ -396,6 +396,7 @@ speechSynthesis.getVoices();
     API.websocketDomainVrchat = 'wss://pipeline.vrchat.cloud';
     API.endpointDomain = 'https://api.vrchat.cloud/api/1';
     API.websocketDomain = 'wss://pipeline.vrchat.cloud';
+    API.attemptingAutoLogin = false;
 
     API.call = function (endpoint, options) {
         var init = {
@@ -505,9 +506,7 @@ speechSynthesis.getVoices();
                     status === 401 &&
                     data.error.message === '"Missing Credentials"'
                 ) {
-                    if (endpoint === 'auth/user') {
-                        this.$emit('AUTOLOGIN');
-                    }
+                    this.$emit('AUTOLOGIN');
                     throw new Error('401: Missing Credentials');
                 }
                 if (status === 403 && endpoint.substring(0, 6) === 'config') {
@@ -4262,6 +4261,13 @@ speechSynthesis.getVoices();
         ) {
             this.refreshFavoriteAvatars(args.params.tags);
         }
+
+        if (
+            args.params.type === 'friend' && 
+            $app.localFavoriteFriendsGroups.includes("friend:" + args.params.tags)
+        )  {
+            $app.updateLocalFavoriteFriends();
+        }
     });
 
     API.$on('FAVORITE:DELETE', function (args) {
@@ -5243,6 +5249,11 @@ speechSynthesis.getVoices();
                 $app.instanceQueueReady(instanceId);
                 break;
 
+            case 'instance-queue-left':
+                console.log('instance-queue-left', content);
+                $app.instanceQueueClear();
+                break;
+
             case 'content-refresh':
                 var contentType = content.contentType;
                 console.log('content-refresh', content);
@@ -5378,6 +5389,14 @@ speechSynthesis.getVoices();
         try {
             socket.close();
         } catch (err) {}
+    };
+
+    API.reconnectWebSocket = function () {
+        if (!$app.friendLogInitStatus) {
+            return;
+        }
+        this.closeWebSocket();
+        this.getAuth();
     };
 
     // #endregion
@@ -5656,9 +5675,14 @@ speechSynthesis.getVoices();
                             throw err;
                         })
                         .then((args) => {
-                            API.getCurrentUser().finally(() => {
-                                this.loginForm.loading = false;
-                            });
+                            API.getCurrentUser()
+                                .finally(() => {
+                                    this.loginForm.loading = false;
+                                })
+                                .catch((err) => {
+                                    this.nextCurrentUserRefresh = 120; // 1min
+                                    console.error(err);
+                                });
                             return args;
                         });
                 } else {
@@ -5771,7 +5795,7 @@ speechSynthesis.getVoices();
             if (API.isLoggedIn === true) {
                 if (--this.nextFriendsRefresh <= 0) {
                     this.nextFriendsRefresh = 7200; // 1hour
-                    this.nextCurrentUserRefresh = 60; // 30secs
+                    this.nextCurrentUserRefresh = 840; // 7mins
                     this.refreshFriendsList();
                     this.updateStoredUser(API.currentUser);
                     if (this.isGameRunning) {
@@ -5779,24 +5803,18 @@ speechSynthesis.getVoices();
                     }
                 }
                 if (--this.nextCurrentUserRefresh <= 0) {
-                    this.nextCurrentUserRefresh = 60; // 30secs
-                    API.getCurrentUser().catch((err1) => {
-                        throw err1;
-                    });
-                    AppApi.CheckGameRunning();
+                    this.nextCurrentUserRefresh = 840; // 7mins
+                    API.getCurrentUser();
                 }
                 if (--this.nextGroupInstanceRefresh <= 0) {
                     if (this.friendLogInitStatus) {
                         this.nextGroupInstanceRefresh = 600; // 5min
                         API.getUsersGroupInstances();
                     }
+                    AppApi.CheckGameRunning();
                 }
                 if (--this.nextAppUpdateCheck <= 0) {
-                    if (this.branch === 'Stable') {
-                        this.nextAppUpdateCheck = 14400; // 2hours
-                    } else {
-                        this.nextAppUpdateCheck = 7200; // 1hour
-                    }
+                    this.nextAppUpdateCheck = 7200; // 1hour
                     if (this.autoUpdateVRCX !== 'Off') {
                         this.checkForVRCXUpdate();
                     }
@@ -8608,30 +8626,58 @@ speechSynthesis.getVoices();
     };
 
     API.$on('AUTOLOGIN', function () {
+        if (this.attemptingAutoLogin) {
+            return;
+        }
+        this.attemptingAutoLogin = true;
         var user =
             $app.loginForm.savedCredentials[$app.loginForm.lastUserLoggedIn];
-        if (typeof user !== 'undefined') {
-            if ($app.enablePrimaryPassword) {
-                this.logout();
-            } else {
-                $app.relogin(user).then(() => {
-                    if (this.errorNoty) {
-                        this.errorNoty.close();
-                    }
-                    if (!navigator.onLine) {
-                        this.errorNoty = new Noty({
-                            type: 'error',
-                            text: 'You are offline.'
-                        }).show();
-                    } else {
-                        this.errorNoty = new Noty({
-                            type: 'success',
-                            text: 'Automatically logged in.'
-                        }).show();
-                    }
-                });
-            }
+        if (typeof user === 'undefined') {
+            this.attemptingAutoLogin = false;
+            return;
         }
+        if ($app.enablePrimaryPassword) {
+            this.logout();
+            return;
+        }
+        $app.relogin(user)
+            .then(() => {
+                if (this.errorNoty) {
+                    this.errorNoty.close();
+                }
+                this.errorNoty = new Noty({
+                    type: 'success',
+                    text: 'Automatically logged in.'
+                }).show();
+                console.log('Automatically logged in.');
+            })
+            .catch((err) => {
+                if (this.errorNoty) {
+                    this.errorNoty.close();
+                }
+                this.errorNoty = new Noty({
+                    type: 'error',
+                    text: 'Failed to login automatically.'
+                }).show();
+                console.error('Failed to login automatically.', err);
+            })
+            .finally(() => {
+                if (!navigator.onLine) {
+                    this.errorNoty = new Noty({
+                        type: 'error',
+                        text: `You're offline.`
+                    }).show();
+                    console.error(`You're offline.`);
+                }
+            });
+    });
+
+    API.$on('USER:CURRENT', function () {
+        this.attemptingAutoLogin = false;
+    });
+
+    API.$on('LOGOUT', function () {
+        this.attemptingAutoLogin = false;
     });
 
     $app.data.loginForm = {
@@ -9094,12 +9140,12 @@ speechSynthesis.getVoices();
     });
 
     $app.methods.refreshFriendsList = async function () {
-        await API.getCurrentUser();
-        this.nextCurrentUserRefresh = 60; // 30secs
+        await API.getCurrentUser().catch((err) => {
+            console.error(err);
+        });
+        this.nextCurrentUserRefresh = 840; // 7mins
         await API.refreshFriends();
-        API.closeWebSocket();
-        await API.getCurrentUser();
-        this.nextCurrentUserRefresh = 60; // 30secs
+        API.reconnectWebSocket();
     };
 
     $app.methods.refreshFriends = function (ref, origin) {
@@ -9604,28 +9650,12 @@ speechSynthesis.getVoices();
 
     // ascending
     var compareByName = function (a, b) {
-        var A = String(a.name).toUpperCase();
-        var B = String(b.name).toUpperCase();
-        if (A < B) {
-            return -1;
-        }
-        if (A > B) {
-            return 1;
-        }
-        return 0;
+        return a.name.localeCompare(b.name);
     };
 
     // ascending
     var compareByDisplayName = function (a, b) {
-        var A = String(a.displayName).toUpperCase();
-        var B = String(b.displayName).toUpperCase();
-        if (A < B) {
-            return -1;
-        }
-        if (A > B) {
-            return 1;
-        }
-        return 0;
+        return a.displayName.localeCompare(b.displayName);
     };
 
     // descending
@@ -23820,21 +23850,6 @@ speechSynthesis.getVoices();
         }
     });
 
-    API.setWorldImage = function (params) {
-        return this.call(`worlds/${params.id}`, {
-            method: 'PUT',
-            params
-        }).then((json) => {
-            var args = {
-                json,
-                params
-            };
-            this.$emit('WORLDIMAGE:SET', args);
-            this.$emit('WORLD', args);
-            return args;
-        });
-    };
-
     API.$on('WORLDIMAGE:SET', function (args) {
         $app.worldDialog.loading = false;
         $app.changeWorldImageDialogLoading = false;
@@ -26002,13 +26017,6 @@ speechSynthesis.getVoices();
             return;
         }
         for (var release of json) {
-            if (
-                release.target_commitish === 'PyPyDanceCompanion' ||
-                release.prerelease
-            ) {
-                // skip old branch name and prerelease builds
-                continue;
-            }
             for (var asset of release.assets) {
                 if (
                     (asset.content_type === 'application/x-msdownload' ||
@@ -29281,16 +29289,13 @@ speechSynthesis.getVoices();
         // workerTimers.setTimeout(this.instanceQueueTimeout, 3600000);
     };
 
-    // $app.methods.instanceQueueTimeout = function () {
-    //     // remove instance from queue after 1hour of inactivity
-    //     API.queuedInstances.forEach((ref) => {
-    //         // 59mins
-    //         if (Date.now() - ref.updatedAt > 3540000) {
-    //             ref.$msgBox.close();
-    //             API.queuedInstances.delete(ref.location);
-    //         }
-    //     });
-    // };
+    $app.methods.instanceQueueClear = function () {
+        // remove all instances from queue
+        API.queuedInstances.forEach((ref) => {
+            ref.$msgBox.close();
+            API.queuedInstances.delete(ref.location);
+        });
+    };
 
     /**
      * @param {{ groupId: string }} params
@@ -31038,6 +31043,8 @@ speechSynthesis.getVoices();
                 if (typeof ref !== 'undefined') {
                     json.user = ref;
                     json.$displayName = ref.displayName;
+                } else {
+                    json.$displayName = json.user?.displayName;
                 }
             }
         }
@@ -33528,6 +33535,7 @@ speechSynthesis.getVoices();
             text: D.text,
             roleIds: D.roleIds,
             visibility: D.visibility,
+            sendNotification: D.sendNotification,
             imageId: null
         };
         if (this.gallerySelectDialog.selectedFileId) {
