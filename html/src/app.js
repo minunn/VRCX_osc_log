@@ -12477,7 +12477,7 @@ speechSynthesis.getVoices();
                 logger.log("💬 " + this.getDisplayNameFromPhotonId(photonId) + ' has said ' + text);
                 logger.info("💬 " + this.getDisplayNameFromPhotonId(photonId) + ' has said ' + text);
                 var currentWorldName = this.lastLocation.name;
-                logger.discord("💬 " + "[" + currentWorldName + "] " + "["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+">) has said " +text);
+                logger.discord("💬 " + "[" + currentWorldName + "] " + "["+this.getDisplayNameFromPhotonId(photonId)+"]"+"( <https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+"> ) has said " +text);
                 this.queueGameLogNoty(entry);
                 this.addGameLog(entry);
                 break;
