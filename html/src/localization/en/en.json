@@ -261,7 +261,7 @@
                 "appearance": {
                     "header": "Appearance",
                     "language": "Language",
-                    "theme_mode": "Theme mode",
+                    "theme_mode": "Theme",
                     "theme_mode_system": "System",
                     "theme_mode_light": "Light",
                     "theme_mode_dark": "Dark",
@@ -421,10 +421,6 @@
                     "vrchat_quit_fix": {
                         "header": "VRChat Quit Fix",
                         "description": "Kill VRChat after exiting game"
-                    },
-                    "vrchat_osc_fix": {
-                        "header": "VRChat OSC Fix",
-                        "description": "Resuming and terminating the suspended install.exe process after exiting game"
                     },
                     "auto_cache_management": {
                         "header": "Automatically Manage Cache When Closing VRChat",
@@ -588,6 +584,8 @@
                 "moderation_show_avatar": "Show Avatar",
                 "moderation_enable_avatar_interaction": "Enable Avatar Interaction",
                 "moderation_disable_avatar_interaction": "Disable Avatar Interaction",
+                "moderation_enable_chatbox": "Unmute Chatbox",
+                "moderation_disable_chatbox": "Mute Chatbox",
                 "edit_status": "Social Status",
                 "edit_language": "Language",
                 "edit_bio": "Bio",

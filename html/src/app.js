@@ -2791,7 +2791,7 @@ speechSynthesis.getVoices();
                 userCount: 0, // PC only?
                 queueEnabled: false, // only present with group instance type
                 queueSize: 0, // only present when queuing is enabled
-                platforms: [],
+                platforms: {},
                 gameServerVersion: 0,
                 hardClose: null, // boolean or null
                 closedAt: null, // string or null
@@ -2804,8 +2804,15 @@ speechSynthesis.getVoices();
                 region: '',
                 canRequestInvite: false,
                 permanent: false,
-                private: '',
-                strict: false,
+                private: '', // part of instance tag
+                hidden: '', // part of instance tag
+                nonce: '', // only present when you're the owner
+                strict: false, // deprecated
+                displayName: null,
+                groupAccessType: null, // only present with group instance type
+                roleRestricted: false, // only present with group instance type
+                instancePersistenceEnabled: null,
+                playerPersistenceEnabled: null,
                 // VRCX
                 $fetchedAt: '',
                 ...json
@@ -3934,12 +3941,11 @@ speechSynthesis.getVoices();
         var userId = this.currentUser.id;
         for (var ref of this.cachedPlayerModerations.values()) {
             if (
-                ref.$isDeleted === false &&
                 ref.type === type &&
                 ref.targetUserId === moderated &&
                 ref.sourceUserId === userId
             ) {
-                ref.$isDeleted = true;
+                this.cachedPlayerModerations.delete(ref.id);
                 this.$emit('PLAYER-MODERATION:@DELETE', {
                     ref,
                     params: {
@@ -3963,7 +3969,6 @@ speechSynthesis.getVoices();
                 targetDisplayName: '',
                 created: '',
                 // VRCX
-                $isDeleted: false,
                 $isExpired: false,
                 //
                 ...json
@@ -3988,10 +3993,9 @@ speechSynthesis.getVoices();
 
     API.deleteExpiredPlayerModerations = function () {
         for (var ref of this.cachedPlayerModerations.values()) {
-            if (ref.$isDeleted || ref.$isExpired === false) {
+            if (!ref.$isExpired) {
                 continue;
             }
-            ref.$isDeleted = true;
             this.$emit('PLAYER-MODERATION:@DELETE', {
                 ref,
                 params: {
@@ -5261,7 +5265,9 @@ speechSynthesis.getVoices();
 
             case 'instance-queue-left':
                 console.log('instance-queue-left', content);
-                $app.instanceQueueClear();
+                var instanceId = content.instanceLocation;
+                $app.removeQueuedInstance(instanceId);
+                // $app.instanceQueueClear();
                 break;
 
             case 'content-refresh':
@@ -5686,6 +5692,14 @@ speechSynthesis.getVoices();
                     (await configRepository.getString('lastUserLoggedIn')) !==
                         null
                 ) {
+                    var user =
+                        this.loginForm.savedCredentials[
+                            this.loginForm.lastUserLoggedIn
+                        ];
+                    if (user?.loginParmas?.endpoint) {
+                        API.endpointDomain = user.loginParmas.endpoint;
+                        API.websocketDomain = user.loginParmas.websocket;
+                    }
                     // login at startup
                     this.loginForm.loading = true;
                     API.getConfig()
@@ -11442,19 +11456,6 @@ speechSynthesis.getVoices();
                         }
                     });
                 }
-                if (this.vrcOSCFix) {
-                    workerTimers.setTimeout(() => {
-                        AppApi.KillInstall().then((processKilled) => {
-                            if (processKilled) {
-                                console.log('OSCFix: Killed Install.exe');
-                            } else {
-                                console.log(
-                                    'OSCFix: Nothing to kill, no Install.exe process running'
-                                );
-                            }
-                        });
-                    }, 2000);
-                }
                 break;
             case 'openvr-init':
                 this.isGameNoVR = false;
@@ -14023,10 +14024,11 @@ speechSynthesis.getVoices();
             this.lastLocation$ = L;
         }
         var hidePrivate = false;
-        // (L.accessType === 'group' && !L.groupAccessType) || L.groupAccessType === 'member')
         if (
             this.discordHideInvite &&
-            (L.accessType === 'invite' || L.accessType === 'invite+')
+            (L.accessType === 'invite' ||
+                L.accessType === 'invite+' ||
+                L.groupAccessType === 'members')
         ) {
             hidePrivate = true;
         }
@@ -15312,17 +15314,11 @@ speechSynthesis.getVoices();
         var { length } = array;
         for (var i = 0; i < length; ++i) {
             if (array[i].id === ref.id) {
-                if (ref.$isDeleted) {
-                    array.splice(i, 1);
-                } else {
-                    Vue.set(array, i, ref);
-                }
+                Vue.set(array, i, ref);
                 return;
             }
         }
-        if (ref.$isDeleted === false) {
-            $app.playerModerationTable.data.push(ref);
-        }
+        $app.playerModerationTable.data.push(ref);
     });
 
     API.$on('PLAYER-MODERATION:@DELETE', function (args) {
@@ -15851,10 +15847,6 @@ speechSynthesis.getVoices();
         'VRCX_vrcQuitFix',
         true
     );
-    $app.data.vrcOSCFix = await configRepository.getBool(
-        'VRCX_vrcOSCFix',
-        true
-    );
     $app.data.vrBackgroundEnabled = await configRepository.getBool(
         'VRCX_vrBackgroundEnabled',
         false
@@ -16039,7 +16031,6 @@ speechSynthesis.getVoices();
             this.relaunchVRChatAfterCrash
         );
         await configRepository.setBool('VRCX_vrcQuitFix', this.vrcQuitFix);
-        await configRepository.setBool('VRCX_vrcOSCFix', this.vrcOSCFix);
         await configRepository.setBool(
             'VRCX_vrBackgroundEnabled',
             this.vrBackgroundEnabled
@@ -16339,7 +16330,11 @@ speechSynthesis.getVoices();
     $app.data.sidebarSortMethods = JSON.parse(
         await configRepository.getString(
             'VRCX_sidebarSortMethods',
-            JSON.stringify(['', '', ''])
+            JSON.stringify([
+                'Sort Private to Bottom',
+                'Sort by Time in Instance',
+                'Sort by Last Active'
+            ])
         )
     );
     if ($app.data.sidebarSortMethods?.length === 3) {
@@ -17725,6 +17720,7 @@ speechSynthesis.getVoices();
         isHideAvatar: false,
         isShowAvatar: false,
         isInteractOff: false,
+        isMuteChat: false,
         isFavorite: false,
 
         $location: {},
@@ -17936,7 +17932,6 @@ speechSynthesis.getVoices();
         var D = $app.userDialog;
         if (
             D.visible === false ||
-            ref.$isDeleted ||
             (ref.targetUserId !== D.id &&
                 ref.sourceUserId !== this.currentUser.id)
         ) {
@@ -17950,6 +17945,8 @@ speechSynthesis.getVoices();
             D.isHideAvatar = true;
         } else if (ref.type === 'interactOff') {
             D.isInteractOff = true;
+        } else if (ref.type === 'muteChat') {
+            D.isMuteChat = true;
         }
         $app.$message({
             message: 'User moderated',
@@ -17975,6 +17972,8 @@ speechSynthesis.getVoices();
             D.isHideAvatar = false;
         } else if (ref.type === 'interactOff') {
             D.isInteractOff = false;
+        } else if (ref.type === 'muteChat') {
+            D.isMuteChat = false;
         }
     });
 
@@ -18092,9 +18091,9 @@ speechSynthesis.getVoices();
                     D.isBlock = false;
                     D.isMute = false;
                     D.isInteractOff = false;
+                    D.isMuteChat = false;
                     for (var ref of API.cachedPlayerModerations.values()) {
                         if (
-                            ref.$isDeleted === false &&
                             ref.targetUserId === D.id &&
                             ref.sourceUserId === API.currentUser.id
                         ) {
@@ -18106,6 +18105,8 @@ speechSynthesis.getVoices();
                                 D.isHideAvatar = true;
                             } else if (ref.type === 'interactOff') {
                                 D.isInteractOff = true;
+                            } else if (ref.type === 'muteChat') {
+                                D.isMuteChat = true;
                             }
                         }
                     }
@@ -18726,6 +18727,31 @@ speechSynthesis.getVoices();
         return { isPC, isQuest, isIos };
     };
 
+    $app.methods.getPlatformInfo = function (unityPackages) {
+        var pc = {};
+        var android = {};
+        var ios = {};
+        if (typeof unityPackages === 'object') {
+            for (var unityPackage of unityPackages) {
+                if (
+                    unityPackage.variant &&
+                    unityPackage.variant !== 'standard' &&
+                    unityPackage.variant !== 'security'
+                ) {
+                    continue;
+                }
+                if (unityPackage.platform === 'standalonewindows') {
+                    pc = unityPackage;
+                } else if (unityPackage.platform === 'android') {
+                    android = unityPackage;
+                } else if (unityPackage.platform === 'ios') {
+                    ios = unityPackage;
+                }
+            }
+        }
+        return { pc, android, ios };
+    };
+
     $app.methods.replaceVrcPackageUrl = function (url) {
         if (!url) {
             return '';
@@ -19111,6 +19137,18 @@ speechSynthesis.getVoices();
                     type: 'interactOff'
                 });
                 break;
+            case 'Unmute Chatbox':
+                API.deletePlayerModeration({
+                    moderated: userId,
+                    type: 'muteChat'
+                });
+                break;
+            case 'Mute Chatbox':
+                API.sendPlayerModeration({
+                    moderated: userId,
+                    type: 'muteChat'
+                });
+                break;
             case 'Report Hacking':
                 $app.reportUserForHacking(userId);
                 break;
@@ -19384,8 +19422,21 @@ speechSynthesis.getVoices();
                     var fileSize = `${(
                         version.file.sizeInBytes / 1048576
                     ).toFixed(2)} MB`;
-                    bundleSizes[platform] = { createdAt, fileSize };
+                    bundleSizes[platform] = {
+                        createdAt,
+                        fileSize
+                    };
 
+                    // update avatar dialog
+                    if (this.avatarDialog.id === ref.id) {
+                        this.avatarDialog.bundleSizes[platform] =
+                            bundleSizes[platform];
+                        if (
+                            this.avatarDialog.lastUpdated < version.created_at
+                        ) {
+                            this.avatarDialog.lastUpdated = version.created_at;
+                        }
+                    }
                     // update world dialog
                     if (this.worldDialog.id === ref.id) {
                         this.worldDialog.bundleSizes[platform] =
@@ -20049,11 +20100,14 @@ speechSynthesis.getVoices();
         isBlocked: false,
         isQuestFallback: false,
         hasImposter: false,
+        imposterVersion: '',
         isPC: false,
         isQuest: false,
         isIos: false,
         treeData: [],
-        fileSize: '',
+        bundleSizes: [],
+        platformInfo: {},
+        lastUpdated: '',
         inCache: false,
         cacheSize: 0,
         cacheLocked: false,
@@ -20104,7 +20158,6 @@ speechSynthesis.getVoices();
         D.id = avatarId;
         D.fileAnalysis = {};
         D.treeData = [];
-        D.fileSize = '';
         D.inCache = false;
         D.cacheSize = 0;
         D.cacheLocked = false;
@@ -20114,6 +20167,10 @@ speechSynthesis.getVoices();
         D.isQuest = false;
         D.isIos = false;
         D.hasImposter = false;
+        D.imposterVersion = '';
+        D.lastUpdated = '';
+        D.bundleSizes = [];
+        D.platformInfo = {};
         D.isFavorite =
             API.cachedFavoritesByObjectId.has(avatarId) ||
             (this.isLocalUserVrcplusSupporter() &&
@@ -20153,49 +20210,19 @@ speechSynthesis.getVoices();
                 D.isPC = isPC;
                 D.isQuest = isQuest;
                 D.isIos = isIos;
-                var assetUrl = '';
+                D.platformInfo = this.getPlatformInfo(args.ref.unityPackages);
                 for (let i = ref.unityPackages.length - 1; i > -1; i--) {
                     var unityPackage = ref.unityPackages[i];
-                    if (
-                        !assetUrl &&
-                        unityPackage.platform === 'standalonewindows' &&
-                        unityPackage.variant === 'standard' &&
-                        this.compareUnityVersion(unityPackage.unitySortNumber)
-                    ) {
-                        assetUrl = unityPackage.assetUrl;
-                    }
                     if (unityPackage.variant === 'impostor') {
                         D.hasImposter = true;
+                        D.imposterVersion = unityPackage.impostorizerVersion;
+                        break;
                     }
                 }
-                var fileId = extractFileId(assetUrl);
-                var fileVersion = parseInt(extractFileVersion(assetUrl), 10);
-                if (!fileId) {
-                    fileId = extractFileId(ref.assetUrl);
-                    fileVersion = parseInt(
-                        extractFileVersion(ref.assetUrl),
-                        10
-                    );
-                }
-                D.fileSize = '';
-                if (fileId) {
-                    D.fileSize = 'Loading';
-                    API.getBundles(fileId)
-                        .then((args2) => {
-                            var { versions } = args2.json;
-                            for (let i = versions.length - 1; i > -1; i--) {
-                                var version = versions[i];
-                                if (version.version === fileVersion) {
-                                    D.fileSize = `${(
-                                        version.file.sizeInBytes / 1048576
-                                    ).toFixed(2)} MB`;
-                                    break;
-                                }
-                            }
-                        })
-                        .catch(() => {
-                            D.fileSize = 'Error';
-                        });
+                if (D.bundleSizes.length === 0) {
+                    this.getBundleDateSize(ref).then((bundleSizes) => {
+                        D.bundleSizes = bundleSizes;
+                    });
                 }
             })
             .catch((err) => {
@@ -25465,7 +25492,8 @@ speechSynthesis.getVoices();
         this.userFavoriteWorlds = [];
         var worldLists = [];
         var params = {
-            ownerId: userId
+            ownerId: userId,
+            n: 100
         };
         var json = await API.call('favorite/groups', {
             method: 'GET',
@@ -27389,11 +27417,42 @@ speechSynthesis.getVoices();
         }
     };
 
-    $app.methods.setCurrentUserLocation = function (location) {
+    $app.methods.setCurrentUserLocation = async function (location) {
         API.currentUser.$location_at = Date.now();
         API.currentUser.$travelingToTime = Date.now();
         API.currentUser.$locationTag = location;
         this.updateCurrentUserLocation();
+
+        // janky gameLog support for Quest
+        var lastLocation = '';
+        for (var i = this.gameLogSessionTable.length - 1; i > -1; i--) {
+            var item = this.gameLogSessionTable[i];
+            if (item.type === 'Location') {
+                lastLocation = item.location;
+                break;
+            }
+        }
+        if (this.isRealInstance(location) && lastLocation !== location) {
+            var dt = new Date().toJSON();
+            var L = API.parseLocation(location);
+            var entry = {
+                created_at: dt,
+                type: 'Location',
+                location,
+                worldId: L.worldId,
+                worldName: await this.getWorldName(L.worldId),
+                groupName: await this.getGroupName(L.groupId),
+                time: 0
+            };
+            database.addGamelogLocationToDatabase(entry);
+            this.queueGameLogNoty(entry);
+            this.addGameLog(entry);
+            this.addInstanceJoinHistory(location, dt);
+
+            this.applyUserDialogLocation();
+            this.applyWorldDialogInstances();
+            this.applyGroupDialogInstances();
+        }
     };
 
     $app.data.avatarHistory = new Set();
