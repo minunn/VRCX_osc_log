@@ -12744,29 +12744,29 @@ speechSynthesis.getVoices();
                 logger.log(`${emoji} ${this.getDisplayNameFromPhotonId(photonId)} has used an emoji ${emojiName}`);
                 logger.info(`${emoji} ${this.getDisplayNameFromPhotonId(photonId)} has used an emoji ${emojiName}`);
                 var currentWorldName = this.lastLocation.name;
-                logger.discord(`${emoji} `+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has used an emoji ${emojiName}`);
+                logger.discord(`${emoji} `+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has used an emoji ${emojiName} with the url: ${imageUrl}`);
                 break;
-            case 74:
-                //spawn Sticker
-                var photonId = data.Parameters[254];
-                if (photonId === this.photonLobbyCurrentUser) {
-                    return;
-                }
-                    var fileId = data.Parameters[245][129];
-                    var imageUrl = `https://api.vrchat.cloud/api/1/file/${fileId}/1/`;
-                this.addEntryPhotonEvent({
-                    photonId: photonId,
-                    text: photonId + ' has used a sticker ' + fileId + ' here is the url : ' + imageUrl,
-                    type: 'SpawnSticker',
-                    created_at: gameLogDate,
-                    imageUrl,
-                    fileId
-                });
-                logger.log(`${this.getDisplayNameFromPhotonId(photonId)} has used an sticker ${fileId} here is the url : ${imageUrl}`);
-                logger.info(`${this.getDisplayNameFromPhotonId(photonId)} has used an sticker ${fileId} here is the url : ${imageUrl}`);
-                var currentWorldName = this.lastLocation.name;
-                logger.discord("["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has used an emoji ${emojiName} here is the url : ${imageUrl}`);
-                break;
+            // case 74:
+            //     //spawn Sticker
+            //     var photonId = data.Parameters[254];
+            //     if (photonId === this.photonLobbyCurrentUser) {
+            //         return;
+            //     }
+            //         var fileId = data.Parameters[245][129];
+            //         var imageUrl = `https://api.vrchat.cloud/api/1/file/${fileId}/1/`;
+            //     this.addEntryPhotonEvent({
+            //         photonId: photonId,
+            //         text: photonId + ' has used a sticker ' + fileId + ' here is the url : ' + imageUrl,
+            //         type: 'SpawnSticker',
+            //         created_at: gameLogDate,
+            //         imageUrl,
+            //         fileId
+            //     });
+            //     logger.log(`${this.getDisplayNameFromPhotonId(photonId)} has used an sticker ${fileId} here is the url : ${imageUrl}`);
+            //     logger.info(`${this.getDisplayNameFromPhotonId(photonId)} has used an sticker ${fileId} here is the url : ${imageUrl}`);
+            //     var currentWorldName = this.lastLocation.name;
+            //     logger.discord("["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has used an emoji ${emojiName} here is the url : ${imageUrl}`);
+            //     break;
         }
     };
 
@@ -26962,19 +26962,22 @@ speechSynthesis.getVoices();
                 
                     // Always send the fileId entry
                     if (fileId) {
+                        const photonId = this.getPhotonIdFromUserId(userid);
+                    
+                        // Always send the fileId entry
                         this.addEntryPhotonEvent({
-                            photonId: this.getPhotonIdFromUserId(userid),
+                            photonId,
                             text: `${fileId}`,
                             type: 'SpawnSticker',
                             created_at: Date.now(),
                             fileId
                         });
-                
+                    
                         // Send the URL entry only if the fileId is not in the excluded list
                         if (!excludedFileIds.includes(fileId)) {
-                            var imageUrl = `https://api.vrchat.cloud/api/1/file/${fileId}/1/`;
+                            var imageUrl = `https://api.vrchat.cloud/api/1/file/${fileId}/1/`;  // Move this line here
                             this.addEntryPhotonEvent({
-                                photonId: this.getPhotonIdFromUserId(userid),
+                                photonId,
                                 text: `${imageUrl}`,
                                 type: 'SpawnSticker',
                                 created_at: Date.now(),
@@ -26982,11 +26985,15 @@ speechSynthesis.getVoices();
                                 fileId
                             });
                         }
-
-                        logger.discord(`Sticker Spawned by ${this.getPhotonIdFromUserId(userid)} with FileID: ${fileId} and URL: ${imageUrl}`);
+                        
+                        // Logging with imageUrl and fileId, ensuring imageUrl is defined
+                        logger.discord(`Sticker Spawned by ${this.getDisplayNameFromUserId(userid)} with FileID: ${fileId} and URL: ${imageUrl || 'N/A'}`);
+                        logger.log(`Sticker Spawned by ${this.getDisplayNameFromUserId(userid)} with FileID: ${fileId}`);
+                        logger.info(`Sticker Spawned by ${this.getDisplayNameFromUserId(userid)} with FileID: ${fileId}`);
                     } else {
-                        logger.log("FileID is undefined!");
+                        // logger.log("FileID is undefined!");
                     }
+                    
                 }
                 
                 this.parsePhotonEvent(eventData, data.dt);
