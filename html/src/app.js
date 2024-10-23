@@ -26944,8 +26944,8 @@ speechSynthesis.getVoices();
                 // logger.events('OnEvent ' + eventData.Code + ' ' + JSON.stringify(eventData));
             
                 if (eventData.Code === 74) {
-                    logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
-                    logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
+                    // logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
+                    // logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
                 
                     const parameters = eventData.Parameters[245];
                     console.log("Parameters for 245: ", parameters); // Debugging log
@@ -26982,6 +26982,8 @@ speechSynthesis.getVoices();
                                 fileId
                             });
                         }
+
+                        logger.discord(`Sticker Spawned by ${this.getPhotonIdFromUserId(userid)} with FileID: ${fileId} and URL: ${imageUrl}`);
                     } else {
                         logger.log("FileID is undefined!");
                     }
