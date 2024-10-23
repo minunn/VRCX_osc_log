@@ -11868,6 +11868,18 @@ speechSynthesis.getVoices();
         "Custom": '🙄'
     };
 
+    $app.data.photonStickers = [
+        'Shock Point',
+        'Vault Cat',
+        'Thumbs Down',
+        'Think Rat',
+        'Pleading',
+        'Mad Science Rat',
+        'Slepy',
+        'Popcorn',
+        'Party Rat',
+    ];
+
     $app.data.photonEmojis = [
         'Angry',
         'Blushing',
@@ -11978,7 +11990,7 @@ speechSynthesis.getVoices();
                     var { joinTime } = this.photonLobbyJointime.get(id);
                 }
                 if (!joinTime) {
-                    console.log(`${id} missing join time`);
+                    // console.log(`${id} missing join time`);
                 }
                 if (joinTime && joinTime + 70000 < dtNow) {
                     // wait 70secs for user to load in
@@ -12050,6 +12062,7 @@ speechSynthesis.getVoices();
         'Moderation',
         'Camera',
         'SpawnEmoji',
+        'SpawnSticker',
         'MasterMigrate'
     ];
 
@@ -12732,6 +12745,27 @@ speechSynthesis.getVoices();
                 logger.info(`${emoji} ${this.getDisplayNameFromPhotonId(photonId)} has used an emoji ${emojiName}`);
                 var currentWorldName = this.lastLocation.name;
                 logger.discord(`${emoji} `+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has used an emoji ${emojiName}`);
+                break;
+            case 74:
+                //spawn Sticker
+                var photonId = data.Parameters[254];
+                if (photonId === this.photonLobbyCurrentUser) {
+                    return;
+                }
+                    var fileId = data.Parameters[245][129];
+                    var imageUrl = `https://api.vrchat.cloud/api/1/file/${fileId}/1/`;
+                this.addEntryPhotonEvent({
+                    photonId: photonId,
+                    text: photonId + ' has used a sticker ' + fileId + ' here is the url : ' + imageUrl,
+                    type: 'SpawnSticker',
+                    created_at: gameLogDate,
+                    imageUrl,
+                    fileId
+                });
+                logger.log(`${this.getDisplayNameFromPhotonId(photonId)} has used an sticker ${fileId} here is the url : ${imageUrl}`);
+                logger.info(`${this.getDisplayNameFromPhotonId(photonId)} has used an sticker ${fileId} here is the url : ${imageUrl}`);
+                var currentWorldName = this.lastLocation.name;
+                logger.discord("["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has used an emoji ${emojiName} here is the url : ${imageUrl}`);
                 break;
         }
     };
@@ -26904,15 +26938,119 @@ speechSynthesis.getVoices();
                     console.log('Game closed, skipped event', data);
                     return;
                 }
-                    console.log(
-                        'OnEvent',
-                        data.OnEventData.Code,
-                        data.OnEventData
-                    );
-                    logger.events('OnEvent ' + data.OnEventData.Code + ' ' + JSON.stringify(data.OnEventData));
-                this.parsePhotonEvent(data.OnEventData, data.dt);
+                const eventData = data.OnEventData;
+                
+                // console.log('OnEvent', eventData.Code, eventData);
+                // logger.events('OnEvent ' + eventData.Code + ' ' + JSON.stringify(eventData));
+            
+                if (eventData.Code === 74) {
+                    logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
+                    logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
+                
+                    const parameters = eventData.Parameters[245];
+                    console.log("Parameters for 245: ", parameters); // Debugging log
+                
+                    var userid = parameters[3]; // Assuming key '3' holds the user ID
+                    var fileId = parameters[129]; // Assuming file ID is under key 129
+                    console.log("UserID: ", userid, "FileID: ", fileId); // Log to check values
+                
+                    // List of file names to exclude
+                    const excludedFileIds = [
+                        "Shock Point", "Vault Cat", "Thumbs Down", "Think Rat", 
+                        "Pleading", "Mad Science Rat", "Slepy", "Popcorn", "Party Rat"
+                    ];
+                
+                    // Always send the fileId entry
+                    if (fileId) {
+                        this.addEntryPhotonEvent({
+                            photonId: this.getPhotonIdFromUserId(userid),
+                            text: `${fileId}`,
+                            type: 'SpawnSticker',
+                            created_at: Date.now(),
+                            fileId
+                        });
+                
+                        // Send the URL entry only if the fileId is not in the excluded list
+                        if (!excludedFileIds.includes(fileId)) {
+                            var imageUrl = `https://api.vrchat.cloud/api/1/file/${fileId}/1/`;
+                            this.addEntryPhotonEvent({
+                                photonId: this.getPhotonIdFromUserId(userid),
+                                text: `${imageUrl}`,
+                                type: 'SpawnSticker',
+                                created_at: Date.now(),
+                                imageUrl,
+                                fileId
+                            });
+                        }
+                    } else {
+                        logger.log("FileID is undefined!");
+                    }
+                }
+                
+                this.parsePhotonEvent(eventData, data.dt);
                 this.photonEventPulse();
                 break;
+
+                // case 'OnEvent':
+                //     if (!this.isGameRunning) {
+                //         console.log('Game closed, skipped event', data);
+                //         return;
+                //     }
+                //     const eventData = data.OnEventData;
+                    
+                //     console.log('OnEvent', eventData.Code, eventData);
+                //     logger.events('OnEvent ' + eventData.Code + ' ' + JSON.stringify(eventData));
+                
+                //     if (eventData.Code === 74) {
+                //         // Ensure that json is defined and valid before parsing
+                //         let data;
+                //         try {
+                //             data = JSON.parse(json);
+                //         } catch (error) {
+                //             console.error('Failed to parse JSON:', error);
+                //             return;
+                //         }
+                
+                //         logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
+                //         logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
+                
+                //         // Check if Parameters exists and has the expected structure
+                //         if (data.Parameters && Array.isArray(data.Parameters)) {
+                //             var photonId = data.Parameters[254];
+                
+                //             if (photonId === this.photonLobbyCurrentUser) {
+                //                 return;
+                //             }
+                
+                //             var stickerName = 'Sticker';
+                //             // Ensure Parameters[245] exists and has the expected structure
+                //             if (data.Parameters[245] && Array.isArray(data.Parameters[245])) {
+                //                 var userid = data.Parameters[245][3];
+                //                 var fileId = data.Parameters[245][8];
+                //                 var imageUrl = `https://api.vrchat.cloud/api/1/file/${fileId}/1/`;
+                
+                //                 this.addEntryPhotonEvent({
+                //                     photonId,
+                //                     text: `${stickerName} userid: ${userid}`,
+                //                     type: 'SpawnSticker',
+                //                     created_at: gameLogDate,
+                //                     imageUrl,
+                //                     fileId
+                //                 });
+                //             } else {
+                //                 console.error('Parameters[245] is not in the expected format:', data.Parameters[245]);
+                //             }
+                //         } else {
+                //             console.error('Parameters is missing or not an array:', data.Parameters);
+                //         }
+                        
+                //         this.parsePhotonEvent(eventData, data.dt);
+                //         this.photonEventPulse();
+                //     }
+                //     break;
+                
+
+
             case 'OnOperationResponse':
                 if (!this.isGameRunning) {
                     console.log('Game closed, skipped event', data);
