@@ -232,7 +232,7 @@ Vue.component('marquee-text', MarqueeText);
         watch: {},
         el: '#x-app',
         mounted() {
-            workerTimers.setTimeout(() => AppApiVr.VrInit(), 1000);
+            workerTimers.setTimeout(() => AppApiVr.VrInit(), 5000);
             if (this.appType === '1') {
                 this.refreshCustomScript();
                 this.updateStatsLoop();
@@ -263,11 +263,11 @@ Vue.component('marquee-text', MarqueeText);
             canRequestInvite: false,
             strict: false
         };
-        if (_tag === 'offline') {
+        if (_tag === 'offline' || _tag === 'offline:offline') {
             ctx.isOffline = true;
-        } else if (_tag === 'private') {
+        } else if (_tag === 'private' || _tag === 'private:private') {
             ctx.isPrivate = true;
-        } else if (_tag === 'traveling') {
+        } else if (_tag === 'traveling' || _tag === 'traveling:traveling') {
             ctx.isTraveling = true;
         } else if (_tag.startsWith('local') === false) {
             var sep = _tag.indexOf(':');
@@ -442,6 +442,7 @@ Vue.component('marquee-text', MarqueeText);
                     year: 'numeric',
                     hour: 'numeric',
                     minute: 'numeric',
+                    second: 'numeric',
                     hourCycle: this.config.dtHour12 ? 'h12' : 'h23'
                 })
                 .replace(' AM', ' am')

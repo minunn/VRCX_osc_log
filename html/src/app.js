@@ -795,11 +795,11 @@ speechSynthesis.getVoices();
             canRequestInvite: false,
             strict: false
         };
-        if (_tag === 'offline') {
+        if (_tag === 'offline' || _tag === 'offline:offline') {
             ctx.isOffline = true;
-        } else if (_tag === 'private') {
+        } else if (_tag === 'private' || _tag === 'private:private') {
             ctx.isPrivate = true;
-        } else if (_tag === 'traveling') {
+        } else if (_tag === 'traveling' || _tag === 'traveling:traveling') {
             ctx.isTraveling = true;
         } else if (_tag.startsWith('local') === false) {
             var sep = _tag.indexOf(':');
@@ -3006,6 +3006,10 @@ speechSynthesis.getVoices();
                     break retryLoop;
                 } catch (err) {
                     console.error(err);
+                    if (!API.currentUser.isLoggedIn) {
+                        console.error(`User isn't logged in`);
+                        break mainLoop;
+                    }
                     if (err?.message?.includes('Not Found')) {
                         console.error('Awful workaround for awful VRC API bug');
                         break retryLoop;
@@ -6733,11 +6737,8 @@ speechSynthesis.getVoices();
         var playDesktopToast = false;
         if (
             this.desktopToast === 'Always' ||
-            (this.desktopToast === 'Outside VR' &&
-                (this.isGameNoVR || !this.isGameRunning)) ||
-            (this.desktopToast === 'Inside VR' &&
-                !this.isGameNoVR &&
-                this.isGameRunning) ||
+            (this.desktopToast === 'Outside VR' && !this.isSteamVRRunning) ||
+            (this.desktopToast === 'Inside VR' && this.isSteamVRRunning) ||
             (this.desktopToast === 'Game Closed' && !this.isGameRunning) ||
             (this.desktopToast === 'Game Running' && this.isGameRunning) ||
             (this.desktopToast === 'Desktop Mode' &&
@@ -25854,6 +25855,10 @@ speechSynthesis.getVoices();
             remainingGroups: []
         };
         var args = await API.getGroups({ userId });
+        if (userId !== this.userDialog.id) {
+            this.userDialog.isGroupsLoading = false;
+            return;
+        }
         if (userId === API.currentUser.id) {
             // update current user groups
             API.currentUserGroups.clear();
@@ -27850,8 +27855,11 @@ speechSynthesis.getVoices();
         }
         switch (instanceId) {
             case 'offline':
+            case 'offline:offline':
             case 'private':
+            case 'private:private':
             case 'traveling':
+            case 'traveling:traveling':
             case instanceId.startsWith('local'):
                 return false;
         }
@@ -27929,6 +27937,10 @@ speechSynthesis.getVoices();
         this.updateCurrentUserLocation();
 
         // janky gameLog support for Quest
+        if (this.isGameRunning) {
+            // with the current state of things, lets not run this if we don't need to
+            return;
+        }
         var lastLocation = '';
         for (var i = this.gameLogSessionTable.length - 1; i > -1; i--) {
             var item = this.gameLogSessionTable[i];
@@ -29671,9 +29683,37 @@ speechSynthesis.getVoices();
         }
 
         avatarIdRemoveList.forEach((id) => {
-            removeFromArray(this.localAvatarFavoritesList, id);
-            if (!this.avatarHistory.has(id)) {
-                database.removeAvatarFromCache(id);
+            // remove from cache if no longer in favorites
+            var avatarInFavorites = false;
+            loop: for (
+                var i = 0;
+                i < this.localAvatarFavoriteGroups.length;
+                ++i
+            ) {
+                var groupName = this.localAvatarFavoriteGroups[i];
+                if (
+                    !this.localAvatarFavorites[groupName] ||
+                    group === groupName
+                ) {
+                    continue loop;
+                }
+                for (
+                    var j = 0;
+                    j < this.localAvatarFavorites[groupName].length;
+                    ++j
+                ) {
+                    var avatarId = this.localAvatarFavorites[groupName][j].id;
+                    if (id === avatarId) {
+                        avatarInFavorites = true;
+                        break loop;
+                    }
+                }
+            }
+            if (!avatarInFavorites) {
+                removeFromArray(this.localAvatarFavoritesList, id);
+                if (!this.avatarHistory.has(id)) {
+                    database.removeAvatarFromCache(id);
+                }
             }
         });
     };
@@ -33522,8 +33562,10 @@ speechSynthesis.getVoices();
         D.selectedAuditLogTypes = [];
         API.getCachedGroup({ groupId }).then((args) => {
             D.groupRef = args.ref;
+            if (this.hasGroupPermission(D.groupRef, 'group-audit-view')) {
+                API.getGroupAuditLogTypes({ groupId });
+            }
         });
-        API.getGroupAuditLogTypes({ groupId });
         this.groupMemberModerationTableForceUpdate = 0;
         D.visible = true;
         this.setGroupMemberModerationTable(this.groupDialog.members);
