@@ -211,7 +211,6 @@
                     "auto_update_off": "끄기",
                     "auto_update_notify": "알림",
                     "auto_update_download": "자동 다운로드",
-                    "auto_update_install": "자동 설치",
                     "change_log": "변경사항"
                 },
                 "application": {
@@ -486,7 +485,6 @@
                         "instance_cache": "Instance cache:",
                         "clear_cache": "캐시 정리",
                         "auto_clear_cache": "캐시 타이머 설정",
-                        "download_history": "다운로드 기록",
                         "show_console": "개발자 도구(Console) 열기"
                     },
                     "sqlite_table_size": {

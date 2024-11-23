@@ -51,10 +51,16 @@ namespace VRCX
             cefSettings.CefCommandLineArgs.Add("disable-pdf-extension");
             cefSettings.CefCommandLineArgs["autoplay-policy"] = "no-user-gesture-required";
             cefSettings.CefCommandLineArgs.Add("disable-web-security");
+            cefSettings.CefCommandLineArgs.Add("disk-cache-size", "2147483647");
 
             if (WebApi.ProxySet)
             {
                 cefSettings.CefCommandLineArgs["proxy-server"] = WebApi.ProxyUrl;
+            }
+            
+            if (VRCXStorage.Instance.Get("VRCX_DisableGpuAcceleration") == "true")
+            {
+                cefSettings.CefCommandLineArgs.Add("disable-gpu");
             }
 
             if (Program.LaunchDebug)
