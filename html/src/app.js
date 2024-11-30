@@ -22854,12 +22854,12 @@ speechSynthesis.getVoices();
                 }
                 const eventData = data.OnEventData;
                 
-                // console.log('OnEvent', eventData.Code, eventData);
-                // logger.events('OnEvent ' + eventData.Code + ' ' + JSON.stringify(eventData));
+                console.log('OnEvent', eventData.Code, eventData);
+                logger.events('OnEvent ' + eventData.Code + ' ' + JSON.stringify(eventData));
             
                 if (eventData.Code === 74) {
-                    // logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
-                    // logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
+                    logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
+                    logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
                 
                     const parameters = eventData.Parameters[245];
                     console.log("Parameters for 245: ", parameters); // Debugging log
