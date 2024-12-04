@@ -8549,6 +8549,7 @@ speechSynthesis.getVoices();
         'Camera',
         'SpawnEmoji',
         'SpawnSticker',
+        'Testportail',
         'MasterMigrate'
     ];
 
@@ -9261,6 +9262,15 @@ speechSynthesis.getVoices();
         var datetime = json.dt;
         var eventData = json.VRCEventData;
         var senderId = eventData.Sender;
+        const excludedEvents = [
+            "SpawnEmojiRPC",
+            "ReleaseBones",
+            "ReloadAvatarNetworkedRPC",
+            "TimerBloop",
+            "PhotoCapture",
+            "EnableCamera",
+            "DisableCamera"
+        ];
         if (this.debugPhotonLogging) {
             console.log('VrcEvent:', json);
         }
@@ -9323,6 +9333,17 @@ speechSynthesis.getVoices();
             } else if (eventData.EventName === 'SpawnEmojiRPC') {
                 var text = this.oldPhotonEmojis[eventData.Data];
                 type = 'SpawnEmoji';
+            
+            } else if (!excludedEvents.includes(eventData.EventName)) {
+                this.addEntryPhotonEvent({
+                    photonId: senderId,
+                    text,
+                    type,
+                    created_at: datetime
+                });
+                    logger.log(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
+                    logger.info(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
+                    logger.discord(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
             } else {
                 var eventVrc = '';
                 if (eventData.Data && eventData.Data.length > 0) {
@@ -9759,7 +9780,6 @@ speechSynthesis.getVoices();
         }
         var text = 'has left';
         var lastEvent = this.photonEvent7List.get(parseInt(photonId, 10));
-        if (typeof lastEvent !== 'undefined') {
             var timeSinceLastEvent = Date.now() - Date.parse(lastEvent);
             if (timeSinceLastEvent > 10 * 1000) {
                 // 10 seconds
@@ -9769,7 +9789,6 @@ speechSynthesis.getVoices();
                 var currentWorldName = this.lastLocation.name;
                 logger.discord("🚫"+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(photonId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(photonId)+`>) has timed out after ${timeToText(timeSinceLastEvent)}`);
             }
-        }
         this.photonLobbyActivePortals.forEach((portal) => {
             if (portal.pendingLeave > 0) {
                 text = `has left through portal to "${portal.worldName}"`;
@@ -22913,13 +22932,52 @@ speechSynthesis.getVoices();
                 logger.events('OnEvent ' + eventData.Code + ' ' + JSON.stringify(eventData));
             
                 if (eventData.Code === 74) {
-                    logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
-                    logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
+                    // logger.log(`[EVENTS] OnEvent 74 ${JSON.stringify(eventData)}`);
+                    // logger.discord(`OnEvent 74 ${JSON.stringify(eventData)}`);
                 
                     const parameters = eventData.Parameters[245];
                     console.log("Parameters for 245: ", parameters); // Debugging log
-                
-                    var userid = parameters[3]; // Assuming key '3' holds the user ID
+            
+// Portal Spawn Logic
+if (parameters[0] == 0) {
+    // Portal spawn
+    const useridPortal = parameters[3]; // Assuming key '3' holds the user ID
+    const portalInfo = parameters[133]; // Use the object directly
+
+    try {
+        console.log("Portal Info: ", portalInfo);
+
+        const portalWorldId = portalInfo.id || "UnknownWorldID";
+        const portalWorldName = portalInfo.name || "UnknownWorldName";
+        const portalididk = parameters[132];
+        console.log("Portal World ID: ", portalWorldId);
+        console.log("Portal World Name: ", portalWorldName);
+        console.log("id ?: ", portalididk);
+
+        const photonId = this.getPhotonIdFromUserId(useridPortal);
+
+        // Always send the fileId entry
+        this.addEntryPhotonEvent({
+            photonId,
+            text: `${photonId} has spawned a portal on ${portalWorldName} with the id ${portalWorldId} and extra id ${portalididk}`,
+            type: 'Testportail',
+            created_at: Date.now(),
+            portalWorldId
+        });
+
+        logger.discord(`'${this.getDisplayNameFromUserId(useridPortal)}' has spawned a portal on '${portalWorldName}' with the id '${portalWorldId}' and extra id '${portalididk}'`);
+        logger.log(`${this.getDisplayNameFromUserId(useridPortal)} has spawned a portal on ${portalWorldName} with the id ${portalWorldId}`);
+        logger.info(`${this.getDisplayNameFromUserId(useridPortal)} has spawned a portal on ${portalWorldName} with the id ${portalWorldId}`);
+        
+        // Add any further processing for the portal here
+    } catch (err) {
+        console.error("Error processing portal info: ", err);
+    }
+}
+
+                    
+                    if(parameters[0] == 2) {
+                        var userid = parameters[3]; // Assuming key '3' holds the user ID
                     var fileId = parameters[129]; // Assuming file ID is under key 129
                     console.log("UserID: ", userid, "FileID: ", fileId); // Log to check values
                 
@@ -22962,7 +23020,8 @@ speechSynthesis.getVoices();
                     } else {
                         // logger.log("FileID is undefined!");
                     }
-                    
+                    }
+
                 }
                 
                 this.parsePhotonEvent(eventData, data.dt);
@@ -23165,6 +23224,7 @@ speechSynthesis.getVoices();
                 database.addGamelogEventToDatabase(entry);
                 this.queueGameLogNoty(entry);
                 this.addGameLog(entry);
+                var displayName = data.DisplayName ?? '';
                 break;
             case 'External':
                 var displayName = data.DisplayName ?? '';
