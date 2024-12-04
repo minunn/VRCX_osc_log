@@ -165,7 +165,11 @@ speechSynthesis.getVoices();
         el: '#x-app',
         async mounted() {
             await this.initLanguage();
-            this.isRunningUnderWine = await AppApi.IsRunningUnderWine();
+            try {
+                this.isRunningUnderWine = await AppApi.IsRunningUnderWine();
+            } catch (err) {
+                console.error(err);
+            }
             await this.changeThemeMode();
             await AppApi.SetUserAgent();
             this.appVersion = await AppApi.GetVersion();
@@ -25562,7 +25566,7 @@ speechSynthesis.getVoices();
         $app.localAvatarFavoriteGroups = [];
         $app.localAvatarFavoritesList = [];
         $app.localAvatarFavorites = {};
-        workerTimers.setTimeout($app.getLocalAvatarFavorites(), 100);
+        workerTimers.setTimeout(() => $app.getLocalAvatarFavorites(), 100);
     });
 
     $app.methods.getLocalAvatarFavorites = async function () {
