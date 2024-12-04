@@ -55,7 +55,6 @@ namespace VRCX
         private bool _wristOverlayActive;
         private bool _wristOverlayWasActive;
         
-        public bool IsHmdAfk { get; private set; }
 
         static VRCXVR()
         {
@@ -837,16 +836,16 @@ namespace VRCX
         public override void ExecuteVrFeedFunction(string function, string json)
         {
             if (_wristOverlay == null) return;
-            if (_wristOverlay.IsLoading)
-                Restart();
+            // if (_wristOverlay.IsLoading)
+            //     Restart();
             _wristOverlay.ExecuteScriptAsync($"$app.{function}", json);
         }
 
         public override void ExecuteVrOverlayFunction(string function, string json)
         {
             if (_hmdOverlay == null) return;
-            if (_hmdOverlay.IsLoading)
-                Restart();
+            // if (_hmdOverlay.IsLoading)
+            //     Restart();
             _hmdOverlay.ExecuteScriptAsync($"$app.{function}", json);
         }
     }
