@@ -9263,8 +9263,120 @@ speechSynthesis.getVoices();
         }
     };
 
+    // $app.methods.parseVRCEvent = function (json) {
+    //     // VRC Event
+    //     var datetime = json.dt;
+    //     var eventData = json.VRCEventData;
+    //     var senderId = eventData.Sender;
+    //     const excludedEvents = [
+    //         "SpawnEmojiRPC",
+    //         "ReleaseBones",
+    //         "ReloadAvatarNetworkedRPC",
+    //         "TimerBloop",
+    //         "PhotoCapture",
+    //         "EnableCamera",
+    //         "DisableCamera"
+    //     ];
+    //     if (this.debugPhotonLogging) {
+    //         console.log('VrcEvent:', json);
+    //     }
+    //     if (eventData.EventName === '_SendOnSpawn') {
+    //         return;
+    //     } else if (eventData.EventType > 34) {
+    //         var entry = {
+    //             created_at: datetime,
+    //             type: 'Event',
+    //             data: `${this.getDisplayNameFromPhotonId(
+    //                 senderId
+    //             )} called non existent RPC ${eventData.EventType}`
+    //         };
+    //         this.addPhotonEventToGameLog(entry);
+    //         return;
+    //     }
+    //     if (eventData.EventType === 14) {
+    //         var type = 'Event';
+    //         if (eventData.EventName === 'ChangeVisibility') {
+    //             if (eventData.Data[0] === true) {
+    //                 var text = 'EnableCamera';
+    //                 logger.log("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
+    //                 logger.info("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
+    //                 var currentWorldName = this.lastLocation.name;
+    //                 logger.discord("📷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has enabled their camera`);
+    //             } else if (eventData.Data[0] === false) {
+    //                 var text = 'DisableCamera';
+    //                 logger.log("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
+    //                 logger.info("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
+    //                 var currentWorldName = this.lastLocation.name;
+    //                 logger.discord("📷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has disabled their camera`);
+    //             }
+    //             type = 'Camera';
+    //         } else if (eventData.EventName === 'PhotoCapture') {
+    //             var text = 'PhotoCapture';
+    //             type = 'Camera';
+    //             logger.log("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
+    //             logger.info("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
+    //             var currentWorldName = this.lastLocation.name;
+    //             logger.discord("📸 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has taken a photo`);
+    //         } else if (eventData.EventName === 'TimerBloop') {
+    //             var text = 'TimerBloop';
+    //             type = 'Camera';
+    //             logger.log("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
+    //             logger.info("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
+    //             var currentWorldName = this.lastLocation.name;
+    //             logger.discord("📸 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has used a timer`);
+    //         } else if (eventData.EventName === 'ReloadAvatarNetworkedRPC') {
+    //             var text = 'AvatarReset';
+    //             logger.log("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
+    //             logger.info("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
+    //             var currentWorldName = this.lastLocation.name;
+    //             logger.discord("🤷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has reset their avatar`);
+    //         } else if (eventData.EventName === 'ReleaseBones') {
+    //             var text = 'ResetPhysBones';
+    //             logger.log("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
+    //             logger.info("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
+    //             var currentWorldName = this.lastLocation.name;
+    //             logger.discord("🤷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has reset their physics bones`);
+    //         } else if (eventData.EventName === 'SpawnEmojiRPC') {
+    //             var text = this.oldPhotonEmojis[eventData.Data];
+    //             type = 'SpawnEmoji';
+    //         } else {
+    //             var eventVrc = '';
+    //             if (eventData.Data && eventData.Data.length > 0) {
+    //                 eventVrc = ` ${JSON.stringify(eventData.Data).replace(
+    //                     /"([^(")"]+)":/g,
+    //                     '$1:'
+    //                 )}`;
+    //             }
+    //             var text = `${eventData.EventName}${eventVrc}`;
+    //         }
+    //         this.addEntryPhotonEvent({
+    //             photonId: senderId,
+    //             text,
+    //             type,
+    //             created_at: datetime
+    //         });
+    //         logger.log(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
+    //         logger.info(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
+    //         logger.discord(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
+    //     } else {
+    //         var eventName = '';
+    //         if (eventData.EventName) {
+    //             eventName = ` ${JSON.stringify(eventData.EventName).replace(
+    //                 /"([^(")"]+)":/g,
+    //                 '$1:'
+    //             )}`;
+    //         }
+    //         if (this.debugPhotonLogging) {
+    //             var displayName = this.getDisplayNameFromPhotonId(senderId);
+    //             var feed = `RPC ${displayName} ${
+    //                 this.photonEventType[eventData.EventType]
+    //             }${eventName}`;
+    //             console.log('VrcRpc:', feed);
+    //         }
+    //     }
+    // };
+
     $app.methods.parseVRCEvent = function (json) {
-        // VRC Event
         var datetime = json.dt;
         var eventData = json.VRCEventData;
         var senderId = eventData.Sender;
@@ -9275,91 +9387,95 @@ speechSynthesis.getVoices();
             "TimerBloop",
             "PhotoCapture",
             "EnableCamera",
-            "DisableCamera"
+            "DisableCamera",
+            "ChangeVisibility" // Add to excluded events to ensure no duplicate processing
         ];
+    
         if (this.debugPhotonLogging) {
             console.log('VrcEvent:', json);
         }
-        if (eventData.EventName === '_SendOnSpawn') {
-            return;
-        } else if (eventData.EventType > 34) {
-            var entry = {
-                created_at: datetime,
-                type: 'Event',
-                data: `${this.getDisplayNameFromPhotonId(
-                    senderId
-                )} called non existent RPC ${eventData.EventType}`
-            };
-            this.addPhotonEventToGameLog(entry);
-            return;
-        }
+    
         if (eventData.EventType === 14) {
             var type = 'Event';
-            if (eventData.EventName === 'ChangeVisibility') {
-                if (eventData.Data[0] === true) {
-                    var text = 'EnableCamera';
-                    logger.log("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
-                    logger.info("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
+            var text = '';
+            var handledEvent = false; // Track if the event was handled in the switch
+    
+            const isExcluded = excludedEvents.includes(eventData.EventName);
+    
+            // Handle events in the switch block
+            switch (eventData.EventName) {
+                case 'ChangeVisibility':
+                    handledEvent = true; // Mark as handled
+                    if (eventData.Data[0] === true) {
+                        text = 'EnableCamera';
+                        type = 'Camera';
+                        logger.log("📷 " + this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
+                        logger.info("📷 " + this.getDisplayNameFromPhotonId(senderId) + ' has enabled their camera');
+                        var currentWorldName = this.lastLocation.name;
+                        logger.discord("📷 [" + currentWorldName + "] [" + this.getDisplayNameFromPhotonId(senderId) + "](<https://vrchat.com/home/user/" + this.getUserIdFromPhotonId(senderId) + ">) has enabled their camera");
+                    } else if (eventData.Data[0] === false) {
+                        text = 'DisableCamera';
+                        type = 'Camera';
+                        logger.log("📷 " + this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
+                        logger.info("📷 " + this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
+                        var currentWorldName = this.lastLocation.name;
+                        logger.discord("📷 [" + currentWorldName + "] [" + this.getDisplayNameFromPhotonId(senderId) + "](<https://vrchat.com/home/user/" + this.getUserIdFromPhotonId(senderId) + ">) has disabled their camera");
+                    }
+                    break;
+                case 'PhotoCapture':
+                    handledEvent = true; // Mark as handled
+                    text = 'PhotoCapture';
+                    type = 'Camera';
+                    logger.log("📸 " + this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
+                    logger.info("📸 " + this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
                     var currentWorldName = this.lastLocation.name;
-                    logger.discord("📷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has enabled their camera`);
-                } else if (eventData.Data[0] === false) {
-                    var text = 'DisableCamera';
-                    logger.log("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
-                    logger.info("📷 "+this.getDisplayNameFromPhotonId(senderId) + ' has disabled their camera');
+                    logger.discord("📸 [" + currentWorldName + "] [" + this.getDisplayNameFromPhotonId(senderId) + "](<https://vrchat.com/home/user/" + this.getUserIdFromPhotonId(senderId) + ">) has taken a photo");
+                    break;
+                case 'TimerBloop':
+                    handledEvent = true; // Mark as handled
+                    text = 'TimerBloop';
+                    type = 'Camera';
+                    logger.log("📸 " + this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
+                    logger.info("📸 " + this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
                     var currentWorldName = this.lastLocation.name;
-                    logger.discord("📷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has disabled their camera`);
-                }
-                type = 'Camera';
-            } else if (eventData.EventName === 'PhotoCapture') {
-                var text = 'PhotoCapture';
-                type = 'Camera';
-                logger.log("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
-                logger.info("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has taken a photo');
-                var currentWorldName = this.lastLocation.name;
-                logger.discord("📸 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has taken a photo`);
-            } else if (eventData.EventName === 'TimerBloop') {
-                var text = 'TimerBloop';
-                type = 'Camera';
-                logger.log("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
-                logger.info("📸 "+this.getDisplayNameFromPhotonId(senderId) + ' has used a timer');
-                var currentWorldName = this.lastLocation.name;
-                logger.discord("📸 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has used a timer`);
-            } else if (eventData.EventName === 'ReloadAvatarNetworkedRPC') {
-                var text = 'AvatarReset';
-                logger.log("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
-                logger.info("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
-                var currentWorldName = this.lastLocation.name;
-                logger.discord("🤷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has reset their avatar`);
-            } else if (eventData.EventName === 'ReleaseBones') {
-                var text = 'ResetPhysBones';
-                logger.log("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
-                logger.info("🤷 "+this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
-                var currentWorldName = this.lastLocation.name;
-                logger.discord("🤷 "+"["+currentWorldName+"] ["+this.getDisplayNameFromPhotonId(senderId)+"]("+"<https://vrchat.com/home/user/"+this.getUserIdFromPhotonId(senderId)+`>) has reset their physics bones`);
-            } else if (eventData.EventName === 'SpawnEmojiRPC') {
-                var text = this.oldPhotonEmojis[eventData.Data];
-                type = 'SpawnEmoji';
-            
-            } else if (!excludedEvents.includes(eventData.EventName)) {
-                this.addEntryPhotonEvent({
-                    photonId: senderId,
-                    text,
-                    type,
-                    created_at: datetime
-                });
-                    logger.log(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
-                    logger.info(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
-                    logger.discord(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} is using a client he sent type ${type}, Custom RPC TEXT ! : ${text}`);
-            } else {
-                var eventVrc = '';
-                if (eventData.Data && eventData.Data.length > 0) {
-                    eventVrc = ` ${JSON.stringify(eventData.Data).replace(
-                        /"([^(")"]+)":/g,
-                        '$1:'
-                    )}`;
-                }
-                var text = `${eventData.EventName}${eventVrc}`;
+                    logger.discord("📸 [" + currentWorldName + "] [" + this.getDisplayNameFromPhotonId(senderId) + "](<https://vrchat.com/home/user/" + this.getUserIdFromPhotonId(senderId) + ">) has used a timer");
+                    break;
+                case 'ReloadAvatarNetworkedRPC':
+                    handledEvent = true; // Mark as handled
+                    text = 'AvatarReset';
+                    logger.log("🤷 " + this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
+                    logger.info("🤷 " + this.getDisplayNameFromPhotonId(senderId) + ' has reset their avatar');
+                    var currentWorldName = this.lastLocation.name;
+                    logger.discord("🤷 [" + currentWorldName + "] [" + this.getDisplayNameFromPhotonId(senderId) + "](<https://vrchat.com/home/user/" + this.getUserIdFromPhotonId(senderId) + ">) has reset their avatar");
+                    break;
+                case 'ReleaseBones':
+                    handledEvent = true; // Mark as handled
+                    text = 'ResetPhysBones';
+                    logger.log("🤷 " + this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
+                    logger.info("🤷 " + this.getDisplayNameFromPhotonId(senderId) + ' has reset their physics bones');
+                    var currentWorldName = this.lastLocation.name;
+                    logger.discord("🤷 [" + currentWorldName + "] [" + this.getDisplayNameFromPhotonId(senderId) + "](<https://vrchat.com/home/user/" + this.getUserIdFromPhotonId(senderId) + ">) has reset their physics bones");
+                    break;
+                case 'SpawnEmojiRPC':
+                    handledEvent = true; // Mark as handled
+                    text = this.oldPhotonEmojis[eventData.Data];
+                    type = 'SpawnEmoji';
+                    break;
+                default:
+                    text = `${eventData.EventName} ${eventData.Data ? JSON.stringify(eventData.Data).replace(/"([^(")"]+)":/g, '$1:') : ''}`;
             }
+    
+            // Mark custom events not in the excluded list or handled in the switch
+            if (!isExcluded && !handledEvent) {
+                text = `${eventData.EventName} ${eventData.Data ? JSON.stringify(eventData.Data).replace(/"([^(")"]+)":/g, '$1:') : ''}`;
+                logger.log(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} sent custom event: ${text}`);
+                logger.info(`[Client User Detected] ${this.getDisplayNameFromPhotonId(senderId)} sent custom event: ${text}`);
+                var currentWorldName = this.lastLocation.name;
+                logger.discord(`[Client User Detected] [${currentWorldName}] [${this.getDisplayNameFromPhotonId(senderId)}](<https://vrchat.com/home/user/${this.getUserIdFromPhotonId(senderId)}>) sent custom event: ${text}`);
+                this.speak(`${this.getDisplayNameFromPhotonId(senderId)} is using a modified client to send custom RPCs! Event: ${text}`);
+            }
+    
+            // Add all events to VRCX logs
             this.addEntryPhotonEvent({
                 photonId: senderId,
                 text,
@@ -9367,23 +9483,16 @@ speechSynthesis.getVoices();
                 created_at: datetime
             });
         } else {
-            var eventName = '';
-            if (eventData.EventName) {
-                eventName = ` ${JSON.stringify(eventData.EventName).replace(
-                    /"([^(")"]+)":/g,
-                    '$1:'
-                )}`;
-            }
+            var eventName = eventData.EventName ? ` ${JSON.stringify(eventData.EventName).replace(/"([^(")"]+)":/g, '$1:')}` : '';
             if (this.debugPhotonLogging) {
                 var displayName = this.getDisplayNameFromPhotonId(senderId);
-                var feed = `RPC ${displayName} ${
-                    this.photonEventType[eventData.EventType]
-                }${eventName}`;
+                var feed = `RPC ${displayName} ${this.photonEventType[eventData.EventType]}${eventName}`;
                 console.log('VrcRpc:', feed);
             }
         }
     };
-
+    
+    
     $app.methods.parsePhotonPortalSpawn = async function (
         created_at,
         instanceId,
@@ -22439,6 +22548,9 @@ speechSynthesis.getVoices();
         }
         var args = await API.getPrint({ printId });
         var imageUrl = args.json?.files?.image;
+        logger.info('idkwhatido ', imageUrl);
+        logger.discord('idkwhatido', imageUrl);
+        logger.log('idkwhatido', imageUrl);
         if (!imageUrl) {
             console.error('Print image URL is missing', args);
             return;
