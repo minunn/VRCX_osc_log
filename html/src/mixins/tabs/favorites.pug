@@ -1,6 +1,6 @@
 mixin favoritesTab()            
     .x-container(v-show="$refs.menu && $refs.menu.activeIndex === 'favorite'")
-        div(style="font-size:13px;position:absolute;right:0;z-index:1")
+        div(style="font-size:13px;position:absolute;right:0;z-index:1;margin-right:15px")
             div(v-if="editFavoritesMode" style="display:inline-block;margin-right:10px")
                 el-button(size="small" @click="clearBulkFavoriteSelection ") {{ $t('view.favorite.clear') }}
                 el-button(size="small" @click="bulkCopyFavoriteSelection") {{ $t('view.favorite.copy') }}
@@ -15,7 +15,7 @@ mixin favoritesTab()
                 el-collapse(v-if="$refs.menu && $refs.menu.activeIndex === 'favorite' && $refs.favoriteTabRef && $refs.favoriteTabRef.currentName === '0'" style="border:0")
                     el-button(size="small" @click="showFriendExportDialog") {{ $t('view.favorite.export') }}
                     el-button(size="small" @click="showFriendImportDialog" style="margin-left:5px") {{ $t('view.favorite.import') }}
-                    div(style="display:inline-block;float:right;font-size:13px;margin-right:10px")
+                    div(style="display:flex;align-items:center;float:right;font-size:13px;margin-right:10px")
                         span.name(style="margin-right:5px") {{ $t('view.favorite.sort_by') }}
                         el-switch(v-model="sortFavorites" :inactive-text="$t('view.settings.appearance.appearance.sort_favorite_by_name')" :active-text="$t('view.settings.appearance.appearance.sort_favorite_by_date')" @change="saveSortFavoritesOption")
                     el-collapse-item(v-for="group in API.favoriteFriendGroups" :key="group.name")
@@ -47,7 +47,8 @@ mixin favoritesTab()
                                                 el-checkbox(v-model="favorite.$selected")
                                         template(v-else)
                                             el-tooltip(placement="right" :content="$t('view.favorite.unfavorite_tooltip')" :disabled="hideTooltips")
-                                                el-button(@click.stop="deleteFavorite(favorite.id)" size="mini" icon="el-icon-delete" circle style="margin-left:5px")
+                                                el-button(v-if="shiftHeld" @click.stop="deleteFavorite(favorite.id)" size="mini" icon="el-icon-close" circle style="color:#f56c6c;margin-left:5px")
+                                                el-button(v-else @click.stop="showFavoriteDialog('friend', favorite.id)" type="default" icon="el-icon-star-on" size="mini" circle style="margin-left:5px")
                                     template(v-else)
                                         .avatar
                                         .detail
@@ -57,7 +58,7 @@ mixin favoritesTab()
                 el-collapse(v-if="$refs.menu && $refs.menu.activeIndex === 'favorite' && $refs.favoriteTabRef && $refs.favoriteTabRef.currentName === '1'" style="border:0")
                     el-button(size="small" @click="showWorldExportDialog") {{ $t('view.favorite.export') }}
                     el-button(size="small" @click="showWorldImportDialog" style="margin-left:5px") {{ $t('view.favorite.import') }}
-                    div(style="display:inline-block;float:right;font-size:13px;margin-right:10px")
+                    div(style="display:flex;align-items:center;float:right;font-size:13px;margin-right:10px")
                         span.name(style="margin-right:5px") {{ $t('view.favorite.sort_by') }}
                         el-switch(v-model="sortFavorites" :inactive-text="$t('view.settings.appearance.appearance.sort_favorite_by_name')" :active-text="$t('view.settings.appearance.appearance.sort_favorite_by_date')" @change="saveSortFavoritesOption")
                     span(style="display:block;margin-top:20px") {{ $t('view.favorite.worlds.search') }}
@@ -81,7 +82,7 @@ mixin favoritesTab()
                     el-collapse-item(v-for="group in API.favoriteWorldGroups" :key="group.name")
                         template(slot="title")
                             span(v-text="group.displayName ? group.displayName : group.name" style="font-weight:bold;font-size:14px;margin-left:10px")
-                            i.x-user-status(style="margin-left:5px" :class="userFavoriteWorldsStatus(group.visibility)")
+                            i.x-status-icon(style="margin-left:5px" :class="userFavoriteWorldsStatus(group.visibility)")
                             span(style="color:#909399;font-size:12px;margin-left:10px") {{ group.count }}/{{ group.capacity }}
                             el-tooltip(placement="top" :content="$t('view.favorite.visibility_tooltip')" :disabled="hideTooltips")
                                 el-dropdown(trigger="click" @click.native.stop size="mini" style="margin-left:10px")
@@ -116,8 +117,11 @@ mixin favoritesTab()
                                                 i.el-icon-warning(style="color:#f56c6c;margin-left:5px")
                                             el-tooltip(v-if="favorite.ref.releaseStatus === 'private'" placement="left" :content="$t('view.favorite.private')")
                                                 i.el-icon-warning(style="color:#e6a23c;margin-left:5px")
+                                            el-tooltip(placement="left" :content="$t('view.favorite.self_invite_tooltip')" :disabled="hideTooltips")
+                                                el-button(@click.stop="newInstanceSelfInvite(favorite.id)" size="mini" icon="el-icon-message" circle style="margin-left:5px")
                                             el-tooltip(placement="right" :content="$t('view.favorite.unfavorite_tooltip')" :disabled="hideTooltips")
-                                                el-button(@click.stop="deleteFavorite(favorite.id)" size="mini" icon="el-icon-delete" circle style="margin-left:5px")
+                                                el-button(v-if="shiftHeld" @click.stop="deleteFavorite(favorite.id)" size="mini" icon="el-icon-close" circle style="color:#f56c6c;margin-left:5px")
+                                                el-button(v-else @click.stop="showFavoriteDialog('world', favorite.id)" type="default" icon="el-icon-star-on" size="mini" circle style="margin-left:5px")
                                     template(v-else)
                                         .avatar
                                         .detail
@@ -157,8 +161,12 @@ mixin favoritesTab()
                                                     el-dropdown-menu(#default="dropdown")
                                                         template(v-for="groupAPI in API.favoriteWorldGroups" :key="groupAPI.name")
                                                             el-dropdown-item(style="display:block;margin:10px 0" @click.native="addFavoriteWorld(favorite, groupAPI, true)" :disabled="groupAPI.count >= groupAPI.capacity") {{ groupAPI.displayName }} ({{ groupAPI.count }} / {{ groupAPI.capacity }})
+                                        template(v-else)
+                                            el-tooltip(placement="left" :content="$t('view.favorite.self_invite_tooltip')" :disabled="hideTooltips")
+                                                el-button(@click.stop="newInstanceSelfInvite(favorite.id)" size="mini" icon="el-icon-message" circle style="margin-left:5px")
                                         el-tooltip(placement="right" :content="$t('view.favorite.unfavorite_tooltip')" :disabled="hideTooltips")
-                                            el-button(@click.stop="removeLocalWorldFavorite(favorite.id, group)" size="mini" icon="el-icon-delete" circle style="margin-left:5px")
+                                            el-button(v-if="shiftHeld" @click.stop="removeLocalWorldFavorite(favorite.id, group)" size="mini" icon="el-icon-close" circle style="color:#f56c6c;margin-left:5px")
+                                            el-button(v-else @click.stop="showFavoriteDialog('world', favorite.id)" type="default" icon="el-icon-star-on" size="mini" circle style="margin-left:5px")
                                     template(v-else)
                                         .avatar
                                         .detail
@@ -168,7 +176,7 @@ mixin favoritesTab()
                 el-collapse(v-if="$refs.menu && $refs.menu.activeIndex === 'favorite' && $refs.favoriteTabRef && $refs.favoriteTabRef.currentName === '2'" style="border:0")
                     el-button(size="small" @click="showAvatarExportDialog") {{ $t('view.favorite.export') }}
                     el-button(size="small" @click="showAvatarImportDialog" style="margin-left:5px") {{ $t('view.favorite.import') }}
-                    div(style="display:inline-block;float:right;font-size:13px;margin-right:10px")
+                    div(style="display:flex;align-items:center;float:right;font-size:13px;margin-right:10px")
                         span.name(style="margin-right:5px") {{ $t('view.favorite.sort_by') }}
                         el-switch(v-model="sortFavorites" :inactive-text="$t('view.settings.appearance.appearance.sort_favorite_by_name')" :active-text="$t('view.settings.appearance.appearance.sort_favorite_by_date')" @change="saveSortFavoritesOption")
                     span(style="display:block;margin-top:20px") {{ $t('view.favorite.avatars.search') }}
@@ -222,7 +230,8 @@ mixin favoritesTab()
                                             el-tooltip(v-if="favorite.ref.releaseStatus !== 'private' && !favorite.deleted" placement="left" :content="$t('view.favorite.select_avatar_tooltip')" :disabled="hideTooltips")
                                                 el-button(@click.stop="selectAvatarWithConfirmation(favorite.id)" :disabled="API.currentUser.currentAvatar === favorite.id" size="mini" icon="el-icon-check" circle style="margin-left:5px")
                                             el-tooltip(placement="right" :content="$t('view.favorite.unfavorite_tooltip')" :disabled="hideTooltips")
-                                                el-button(@click.stop="deleteFavorite(favorite.id)" size="mini" icon="el-icon-delete" circle style="margin-left:5px")
+                                                el-button(v-if="shiftHeld" @click.stop="deleteFavorite(favorite.id)" size="mini" icon="el-icon-close" circle style="color:#f56c6c;margin-left:5px")
+                                                el-button(v-else @click.stop="showFavoriteDialog('avatar', favorite.id)" type="default" icon="el-icon-star-on" size="mini" circle style="margin-left:5px")
                                     template(v-else)
                                         .avatar
                                         .detail
@@ -246,7 +255,7 @@ mixin favoritesTab()
                                             el-button(@click.stop="selectAvatarWithConfirmation(favorite.id)" :disabled="API.currentUser.currentAvatar === favorite.id" size="mini" icon="el-icon-check" circle style="margin-left:5px")
                                     template(v-if="API.cachedFavoritesByObjectId.has(favorite.id)")
                                         el-tooltip(placement="right" content="Unfavorite" :disabled="hideTooltips")
-                                            el-button(@click.stop="deleteFavorite(favorite.id)" type="default" icon="el-icon-star-on" size="mini" circle style="margin-left:5px")
+                                            el-button(@click.stop="showFavoriteDialog('avatar', favorite.id)" type="default" icon="el-icon-star-on" size="mini" circle style="margin-left:5px")
                                     template(v-else)
                                         el-tooltip(placement="right" content="Favorite" :disabled="hideTooltips")
                                             el-button(@click.stop="showFavoriteDialog('avatar', favorite.id)" type="default" icon="el-icon-star-off" size="mini" circle style="margin-left:5px")
@@ -285,7 +294,8 @@ mixin favoritesTab()
                                             el-tooltip(placement="left" :content="$t('view.favorite.select_avatar_tooltip')" :disabled="hideTooltips")
                                                 el-button(@click.stop="selectAvatarWithConfirmation(favorite.id)" :disabled="API.currentUser.currentAvatar === favorite.id" size="mini" icon="el-icon-check" circle style="margin-left:5px")
                                         el-tooltip(placement="right" :content="$t('view.favorite.unfavorite_tooltip')" :disabled="hideTooltips")
-                                            el-button(@click.stop="removeLocalAvatarFavorite(favorite.id, group)" size="mini" icon="el-icon-delete" circle style="margin-left:5px")
+                                            el-button(v-if="shiftHeld" @click.stop="removeLocalAvatarFavorite(favorite.id, group)" size="mini" icon="el-icon-close" circle style="color:#f56c6c;margin-left:5px")
+                                            el-button(v-else @click.stop="showFavoriteDialog('avatar', favorite.id)" type="default" icon="el-icon-star-on" size="mini" circle style="margin-left:5px")
                                     template(v-else)
                                         .avatar
                                         .detail

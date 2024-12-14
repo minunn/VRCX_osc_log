@@ -64,18 +64,19 @@ mixin userDialog()
                                         span(v-if="badge.hidden") &nbsp;(Hidden)
                                     el-popover(placement="right" width="300px" trigger="click")
                                         img.x-link.x-user-badge(slot="reference" v-lazy="badge.badgeImageUrl" style="flex:none;height:32px;width:32px;border-radius:3px;object-fit:cover;margin-top:5px;margin-right:5px" :class="{'x-user-badge-hidden':badge.hidden}")
-                                        img.x-link(v-lazy="badge.badgeImageUrl" style="height:300px" @click="showFullscreenImageDialog(badge.badgeImageUrl)")
+                                        img.x-link(v-lazy="badge.badgeImageUrl" style="width:300px" @click="showFullscreenImageDialog(badge.badgeImageUrl)")
                                         br
-                                        span {{ badge.badgeName }}
-                                        br
-                                        span.x-grey(style="font-size:12px") {{ badge.badgeDescription }}
-                                        br
-                                        span.x-grey(v-if="badge.assignedAt" style="font-family:monospace;font-size:12px") {{ $t('dialog.user.badges.assigned') }}: {{ badge.assignedAt | formatDate('long') }}
-                                        template(v-if="userDialog.id === API.currentUser.id")
+                                        div(style="display:block;width:300px;word-break:normal")
+                                            span {{ badge.badgeName }}
                                             br
-                                            el-checkbox(@change="toggleBadgeVisibility(badge)" v-model="badge.hidden" style="margin-top:5px") {{ $t('dialog.user.badges.hidden') }}
+                                            span.x-grey(style="font-size:12px") {{ badge.badgeDescription }}
                                             br
-                                            el-checkbox(@change="toggleBadgeShowcased(badge)" v-model="badge.showcased" style="margin-top:5px") {{ $t('dialog.user.badges.showcased') }}
+                                            span.x-grey(v-if="badge.assignedAt" style="font-family:monospace;font-size:12px") {{ $t('dialog.user.badges.assigned') }}: {{ badge.assignedAt | formatDate('long') }}
+                                            template(v-if="userDialog.id === API.currentUser.id")
+                                                br
+                                                el-checkbox(@change="toggleBadgeVisibility(badge)" v-model="badge.hidden" style="margin-top:5px") {{ $t('dialog.user.badges.hidden') }}
+                                                br
+                                                el-checkbox(@change="toggleBadgeShowcased(badge)" v-model="badge.showcased" style="margin-top:5px") {{ $t('dialog.user.badges.showcased') }}
                         div(style="margin-top:5px")
                             span(v-text="userDialog.ref.statusDescription" style="font-size:12px")
                     div(v-if="userDialog.ref.userIcon" style="flex:none;margin-right:10px")
@@ -92,6 +93,7 @@ mixin userDialog()
                             el-button(:type="(userDialog.incomingRequest || userDialog.outgoingRequest) ? 'success' : (userDialog.isBlock || userDialog.isMute) ? 'danger' : 'default'" icon="el-icon-more" circle style="margin-left:5px")
                             el-dropdown-menu(#default="dropdown")
                                 el-dropdown-item(icon="el-icon-refresh" command="Refresh") {{ $t('dialog.user.actions.refresh') }}
+                                el-dropdown-item(icon="el-icon-share" command="Share") {{ $t('dialog.user.actions.share') }}
                                 template(v-if="userDialog.ref.id === API.currentUser.id")
                                     el-dropdown-item(icon="el-icon-picture-outline" command="Manage Gallery" divided) {{ $t('dialog.user.actions.manage_gallery_icon') }}
                                     el-dropdown-item(icon="el-icon-s-custom" command="Show Avatar Author") {{ $t('dialog.user.actions.show_avatar_author') }}
@@ -119,20 +121,20 @@ mixin userDialog()
                                     el-dropdown-item(icon="el-icon-s-custom" command="Show Fallback Avatar Details") {{ $t('dialog.user.actions.show_fallback_avatar') }}
                                     el-dropdown-item(icon="el-icon-tickets" command="Previous Instances") {{ $t('dialog.user.actions.show_previous_instances') }}
                                     el-dropdown-item(v-if="userDialog.ref.currentAvatarImageUrl" icon="el-icon-picture-outline" command="Previous Images") {{ $t('dialog.user.actions.show_previous_images') }}
-                                    el-dropdown-item(v-if="userDialog.isBlock" icon="el-icon-circle-check" command="Unblock" divided style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_unblock') }}
-                                    el-dropdown-item(v-else icon="el-icon-circle-close" command="Block" divided :disabled="userDialog.ref.$isModerator") {{ $t('dialog.user.actions.moderation_block') }}
-                                    el-dropdown-item(v-if="userDialog.isMute" icon="el-icon-microphone" command="Unmute" style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_unmute') }}
-                                    el-dropdown-item(v-else icon="el-icon-turn-off-microphone" command="Mute" :disabled="userDialog.ref.$isModerator") {{ $t('dialog.user.actions.moderation_mute') }}
-                                    el-dropdown-item(v-if="userDialog.isMuteChat" icon="el-icon-chat-line-round" command="Unmute Chatbox" style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_enable_chatbox') }}
-                                    el-dropdown-item(v-else icon="el-icon-chat-dot-round" command="Mute Chatbox") {{ $t('dialog.user.actions.moderation_disable_chatbox') }}
+                                    el-dropdown-item(v-if="userDialog.isBlock" icon="el-icon-circle-check" command="Moderation Unblock" divided style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_unblock') }}
+                                    el-dropdown-item(v-else icon="el-icon-circle-close" command="Moderation Block" divided :disabled="userDialog.ref.$isModerator") {{ $t('dialog.user.actions.moderation_block') }}
+                                    el-dropdown-item(v-if="userDialog.isMute" icon="el-icon-microphone" command="Moderation Unmute" style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_unmute') }}
+                                    el-dropdown-item(v-else icon="el-icon-turn-off-microphone" command="Moderation Mute" :disabled="userDialog.ref.$isModerator") {{ $t('dialog.user.actions.moderation_mute') }}
+                                    el-dropdown-item(v-if="userDialog.isMuteChat" icon="el-icon-chat-line-round" command="Moderation Enable Chatbox" style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_enable_chatbox') }}
+                                    el-dropdown-item(v-else icon="el-icon-chat-dot-round" command="Moderation Disable Chatbox") {{ $t('dialog.user.actions.moderation_disable_chatbox') }}
                                     el-dropdown-item(icon="el-icon-user-solid" command="Show Avatar")
                                         i.el-icon-check.el-icon--left(v-if="userDialog.isShowAvatar")
                                         span {{ $t('dialog.user.actions.moderation_show_avatar') }}
                                     el-dropdown-item(icon="el-icon-user" command="Hide Avatar")
                                         i.el-icon-check.el-icon--left(v-if="userDialog.isHideAvatar")
                                         span {{ $t('dialog.user.actions.moderation_hide_avatar') }}
-                                    el-dropdown-item(v-if="userDialog.isInteractOff" icon="el-icon-thumb" command="Enable Avatar Interaction" style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_enable_avatar_interaction') }}
-                                    el-dropdown-item(v-else icon="el-icon-circle-close" command="Disable Avatar Interaction") {{ $t('dialog.user.actions.moderation_disable_avatar_interaction') }}
+                                    el-dropdown-item(v-if="userDialog.isInteractOff" icon="el-icon-thumb" command="Moderation Enable Avatar Interaction" style="color:#F56C6C") {{ $t('dialog.user.actions.moderation_enable_avatar_interaction') }}
+                                    el-dropdown-item(v-else icon="el-icon-circle-close" command="Moderation Disable Avatar Interaction") {{ $t('dialog.user.actions.moderation_disable_avatar_interaction') }}
                                     el-dropdown-item(icon="el-icon-s-flag" command="Report Hacking" :disabled="userDialog.ref.$isModerator") {{ $t('dialog.user.actions.report_hacking') }}
                                     template(v-if="userDialog.isFriend")
                                         el-dropdown-item(icon="el-icon-delete" command="Unfriend" divided style="color:#F56C6C") {{ $t('dialog.user.actions.unfriend') }}
@@ -466,7 +468,7 @@ mixin userDialog()
                             el-tab-pane
                                 span(slot="label")
                                     span(v-text="list[0]" style="font-weight:bold;font-size:16px")
-                                    i.x-user-status(style="margin-left:5px" :class="userFavoriteWorldsStatus(list[1])")
+                                    i.x-status-icon(style="margin-left:5px" :class="userFavoriteWorldsStatus(list[1])")
                                     span(style="color:#909399;font-size:12px;margin-left:5px") {{ list[2].length }}/{{ API.favoriteLimits.maxFavoritesPerGroup.world }}
                                 .x-friend-list(style="margin-top:10px;margin-bottom:15px;min-height:60px")
                                     .x-friend-item(v-for="world in list[2]" :key="world.id" @click="showWorldDialog(world.id)" class="x-friend-item-border")

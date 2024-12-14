@@ -163,6 +163,20 @@ export default class extends baseClass {
                     if (typeof ref === 'undefined') {
                         break;
                     }
+                    var friendRef = this.friends.get(userId);
+                    if (typeof friendRef?.ref !== 'undefined') {
+                        friendRef.ref.$joinCount++;
+                        friendRef.ref.$lastSeen = new Date().toJSON();
+                        friendRef.ref.$timeSpent += Date.now() - ref.joinTime;
+                        if (
+                            this.sidebarSortMethods.includes(
+                                'Sort by Last Seen'
+                            )
+                        ) {
+                            this.sortVIPFriends = true;
+                            this.sortOnlineFriends = true;
+                        }
+                    }
                     var time = Date.now() - ref.joinTime;
                     this.lastLocation.playerList.delete(userId);
                     this.lastLocation.friendList.delete(userId);
@@ -410,7 +424,10 @@ export default class extends baseClass {
                         break;
                     }
 
-                    $app.trySaveStickerToFile(gameLog.displayName, gameLog.fileId);
+                    $app.trySaveStickerToFile(
+                        gameLog.displayName,
+                        gameLog.fileId
+                    );
                     break;
             }
             if (entry) {
@@ -432,6 +449,19 @@ export default class extends baseClass {
             if (entry.type === 'VideoPlay') {
                 // event time can be before last gameLog entry
                 this.updateSharedFeed(true);
+            }
+
+            // If the VIP friend filter is enabled, logs from other friends will be ignored.
+            if (
+                this.gameLogTable.vip &&
+                !this.localFavoriteFriends.has(entry.userId) &&
+                (entry.type === 'OnPlayerJoined' ||
+                    entry.type === 'OnPlayerLeft' ||
+                    entry.type === 'VideoPlay' ||
+                    entry.type === 'PortalSpawn' ||
+                    entry.type === 'External')
+            ) {
+                return;
             }
             if (
                 entry.type === 'LocationDestination' ||
@@ -849,10 +879,19 @@ export default class extends baseClass {
                 'VRCX_gameLogTableFilters',
                 JSON.stringify(this.gameLogTable.filter)
             );
+            await configRepository.setBool(
+                'VRCX_gameLogTableVIPFilter',
+                this.gameLogTable.vip
+            );
             this.gameLogTable.loading = true;
+            let vipList = [];
+            if (this.gameLogTable.vip) {
+                vipList = Array.from(this.localFavoriteFriends.values());
+            }
             this.gameLogTable.data = await database.lookupGameLogDatabase(
                 this.gameLogTable.search,
-                this.gameLogTable.filter
+                this.gameLogTable.filter,
+                vipList
             );
             this.gameLogTable.loading = false;
         },
