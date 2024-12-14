@@ -3508,9 +3508,6 @@ speechSynthesis.getVoices();
     };
 
     // #endregion
-    // API
-
-    // #endregion
     // #region | Misc
 
     var $timers = [];
@@ -17201,7 +17198,6 @@ speechSynthesis.getVoices();
     };
 
     // #endregion
-
     // #region | App: Bio Dialog
 
     $app.data.bioDialog = {
@@ -26556,6 +26552,7 @@ if (parameters[0] == 0) {
     };
 
     // #endregion
+    // #region | App: Notifications ?
 
     $app.methods.sendNotificationResponse = function (
         notificationId,
@@ -27234,7 +27231,6 @@ if (parameters[0] == 0) {
     };
 
     // #endregion
-
     // #region instance join history
 
     $app.data.instanceJoinHistory = new Map();
@@ -27262,7 +27258,6 @@ if (parameters[0] == 0) {
     };
 
     // #endregion
-
     // #region persistent data
 
     /**
@@ -27327,7 +27322,6 @@ if (parameters[0] == 0) {
         }
     });
 
-    // #endregion
 
     $app.data.worldAllowedDomainsDialog = {
         visible: false,
@@ -27361,7 +27355,7 @@ if (parameters[0] == 0) {
     };
 
     $app.data.ossDialog = false;
-
+// #endregion
     // #region | App: Badges
 
     API.updateBadge = function (params) {
@@ -27417,9 +27411,6 @@ if (parameters[0] == 0) {
         });
     };
 
-    // #endregion
-
-    // "$app" is being replaced by Vue, update references inside all the classes
     $app = new Vue($app);
     window.$app = $app;
     window.API = API;
