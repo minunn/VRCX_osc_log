@@ -53,6 +53,7 @@ import _memos from './classes/memos.js';
 import _languages from './classes/languages.js';
 import _groups from './classes/groups.js';
 import _vrcRegistry from './classes/vrcRegistry.js';
+import _restoreFriendOrder from './classes/restoreFriendOrder.js';
 
 // API classes
 import _config from './classes/API/config.js';
@@ -139,7 +140,8 @@ speechSynthesis.getVoices();
         config: new _config($app, API, $t),
         languages: new _languages($app, API, $t),
         groups: new _groups($app, API, $t),
-        vrcRegistry: new _vrcRegistry($app, API, $t)
+        vrcRegistry: new _vrcRegistry($app, API, $t),
+        restoreFriendOrder: new _restoreFriendOrder($app, API, $t)
     };
 
     await configRepository.init();
@@ -593,6 +595,7 @@ speechSynthesis.getVoices();
                 $previousLocation: '',
                 $customTag: '',
                 $customTagColour: '',
+                $friendNumber: 0,
                 //
                 ...json
             };
@@ -2000,6 +2003,12 @@ speechSynthesis.getVoices();
                 break;
             }
         }
+        // delete any null in json
+        for (var key in json) {
+            if (json[key] === null) {
+                delete json[key];
+            }
+        }
         if (typeof ref === 'undefined') {
             ref = {
                 id: '',
@@ -2249,6 +2258,21 @@ speechSynthesis.getVoices();
         }
     });
 
+    API.hideNotificationV2 = function (notificationId) {
+        return this.call(`notifications/${notificationId}`, {
+            method: 'DELETE'
+        }).then((json) => {
+            var args = {
+                json,
+                params: {
+                    notificationId
+                }
+            };
+            this.$emit('NOTIFICATION:V2:HIDE', args);
+            return args;
+        });
+    };
+
     /**
     * @param {{
             notificationId: string,
@@ -2273,6 +2297,7 @@ speechSynthesis.getVoices();
             .catch((err) => {
                 // something went wrong, lets assume it's already expired
                 this.$emit('NOTIFICATION:HIDE', { params });
+                API.hideNotificationV2(params.notificationId);
                 throw err;
             });
     };
@@ -2415,20 +2440,27 @@ speechSynthesis.getVoices();
      * @param {{ notificationId: string }} params
      * @return { Promise<{json: any, params}> }
      */
-    API.acceptNotification = function (params) {
+    API.acceptFriendRequestNotification = function (params) {
         return this.call(
             `auth/user/notifications/${params.notificationId}/accept`,
             {
                 method: 'PUT'
             }
-        ).then((json) => {
-            var args = {
-                json,
-                params
-            };
-            this.$emit('NOTIFICATION:ACCEPT', args);
-            return args;
-        });
+        )
+            .then((json) => {
+                var args = {
+                    json,
+                    params
+                };
+                this.$emit('NOTIFICATION:ACCEPT', args);
+                return args;
+            })
+            .catch((err) => {
+                // if friend request could not be found, delete it
+                if (err && err.message && err.message.includes('404')) {
+                    this.$emit('NOTIFICATION:HIDE', { params });
+                }
+            });
     };
 
     /**
@@ -6281,7 +6313,7 @@ speechSynthesis.getVoices();
 
     $app.data.friends = new Map();
     $app.data.pendingActiveFriends = new Set();
-    $app.data.friendsNo = 0;
+    $app.data.friendNumber = 0;
     $app.data.isFriendsGroupMe = true;
     $app.data.isVIPFriends = true;
     $app.data.isOnlineFriends = true;
@@ -6388,7 +6420,7 @@ speechSynthesis.getVoices();
     API.$on('LOGIN', function () {
         $app.friends.clear();
         $app.pendingActiveFriends.clear();
-        $app.friendsNo = 0;
+        $app.friendNumber = 0;
         $app.isVIPFriends = true;
         $app.isOnlineFriends = true;
         $app.isActiveFriends = true;
@@ -6479,40 +6511,6 @@ speechSynthesis.getVoices();
                 this.deleteFriend(id);
             }
         }
-
-        this.saveFriendOrder();
-    };
-
-    $app.methods.saveFriendOrder = async function () {
-        var currentTime = Date.now();
-        var lastStoreTime = await configRepository.getString(
-            `VRCX_lastStoreTime_${API.currentUser.id}`,
-            ''
-        );
-        // store once every week
-        if (lastStoreTime && currentTime - lastStoreTime < 604800000) {
-            return;
-        }
-        var storedData = {};
-        try {
-            var data = await configRepository.getString(
-                `VRCX_friendOrder_${API.currentUser.id}`
-            );
-            if (data) {
-                var storedData = JSON.parse(data);
-            }
-        } catch (err) {
-            console.error(err);
-        }
-        storedData[currentTime] = Array.from(this.friends.keys());
-        await configRepository.setString(
-            `VRCX_friendOrder_${API.currentUser.id}`,
-            JSON.stringify(storedData)
-        );
-        await configRepository.setString(
-            `VRCX_lastStoreTime_${API.currentUser.id}`,
-            currentTime
-        );
     };
 
     $app.methods.addFriend = function (id, state) {
@@ -6532,7 +6530,6 @@ speechSynthesis.getVoices();
             isVIP,
             ref,
             name,
-            no: ++this.friendsNo,
             memo: '',
             pendingOffline: false,
             pendingOfflineTime: '',
@@ -10653,6 +10650,14 @@ speechSynthesis.getVoices();
 
     $app.methods.setNowPlaying = function (ctx) {
         if (this.nowPlaying.url !== ctx.videoUrl) {
+            if (!ctx.userId && ctx.displayName) {
+                for (var ref of API.cachedUsers.values()) {
+                    if (ref.displayName === ctx.displayName) {
+                        ctx.userId = ref.id;
+                        break;
+                    }
+                }
+            }
             this.queueGameLogNoty(ctx);
             this.addGameLog(ctx);
             database.addGamelogVideoPlayToDatabase(ctx);
@@ -11841,7 +11846,8 @@ speechSynthesis.getVoices();
             var row = {
                 userId: ref.id,
                 displayName: ref.displayName,
-                trustLevel: ref.$trustLevel
+                trustLevel: ref.$trustLevel,
+                friendNumber: 0
             };
             this.friendLog.set(friend.id, row);
             sqlValues.unshift(row);
@@ -11863,6 +11869,11 @@ speechSynthesis.getVoices();
     };
 
     $app.methods.getFriendLog = async function (currentUser) {
+        this.friendNumber = await configRepository.getInt(
+            `VRCX_friendNumber_${currentUser.id}`,
+            0
+        );
+
         var friendLogCurrentArray = await database.getFriendLogCurrent();
         for (var friend of friendLogCurrentArray) {
             this.friendLog.set(friend.userId, friend);
@@ -11871,7 +11882,9 @@ speechSynthesis.getVoices();
         this.friendLogTable.data = await database.getFriendLogHistory();
         this.refreshFriends(currentUser, true);
         await API.refreshFriends();
+        await this.tryRestoreFriendNumber();
         this.friendLogInitStatus = true;
+
         // check for friend/name/rank change AFTER friendLogInitStatus is set
         for (var friend of friendLogCurrentArray) {
             var ref = API.cachedUsers.get(friend.userId);
@@ -11907,12 +11920,21 @@ speechSynthesis.getVoices();
             userId: id
         }).then((args) => {
             if (args.json.isFriend && !this.friendLog.has(id)) {
+                if (this.friendNumber === 0) {
+                    this.friendNumber = this.friends.size;
+                }
+                ref.$friendNumber = ++this.friendNumber;
+                configRepository.setInt(
+                    `VRCX_friendNumber_${API.currentUser.id}`,
+                    this.friendNumber
+                );
                 this.addFriend(id, ref.state);
                 var friendLogHistory = {
                     created_at: new Date().toJSON(),
                     type: 'Friend',
                     userId: id,
-                    displayName: ref.displayName
+                    displayName: ref.displayName,
+                    friendNumber: ref.$friendNumber
                 };
                 this.friendLogTable.data.push(friendLogHistory);
                 database.addFriendLogHistory(friendLogHistory);
@@ -11920,7 +11942,8 @@ speechSynthesis.getVoices();
                 var friendLogCurrent = {
                     userId: id,
                     displayName: ref.displayName,
-                    trustLevel: ref.$trustLevel
+                    trustLevel: ref.$trustLevel,
+                    friendNumber: ref.$friendNumber
                 };
                 this.friendLog.set(id, friendLogCurrent);
                 database.setFriendLogCurrent(friendLogCurrent);
@@ -12008,7 +12031,8 @@ speechSynthesis.getVoices();
                     type: 'DisplayName',
                     userId: ref.id,
                     displayName: ref.displayName,
-                    previousDisplayName: ctx.displayName
+                    previousDisplayName: ctx.displayName,
+                    friendNumber: ref.$friendNumber
                 };
                 this.friendLogTable.data.push(friendLogHistoryDisplayName);
                 database.addFriendLogHistory(friendLogHistoryDisplayName);
@@ -12016,7 +12040,8 @@ speechSynthesis.getVoices();
                 var friendLogCurrent = {
                     userId: ref.id,
                     displayName: ref.displayName,
-                    trustLevel: ref.$trustLevel
+                    trustLevel: ref.$trustLevel,
+                    friendNumber: ref.$friendNumber
                 };
                 this.friendLog.set(ref.id, friendLogCurrent);
                 database.setFriendLogCurrent(friendLogCurrent);
@@ -12039,7 +12064,8 @@ speechSynthesis.getVoices();
                 var friendLogCurrent3 = {
                     userId: ref.id,
                     displayName: ref.displayName,
-                    trustLevel: ref.$trustLevel
+                    trustLevel: ref.$trustLevel,
+                    friendNumber: ref.$friendNumber
                 };
                 this.friendLog.set(ref.id, friendLogCurrent3);
                 database.setFriendLogCurrent(friendLogCurrent3);
@@ -12051,7 +12077,8 @@ speechSynthesis.getVoices();
                 userId: ref.id,
                 displayName: ref.displayName,
                 trustLevel: ref.$trustLevel,
-                previousTrustLevel: ctx.trustLevel
+                previousTrustLevel: ctx.trustLevel,
+                friendNumber: ref.$friendNumber
             };
             this.friendLogTable.data.push(friendLogHistoryTrustLevel);
             database.addFriendLogHistory(friendLogHistoryTrustLevel);
@@ -12059,7 +12086,8 @@ speechSynthesis.getVoices();
             var friendLogCurrent2 = {
                 userId: ref.id,
                 displayName: ref.displayName,
-                trustLevel: ref.$trustLevel
+                trustLevel: ref.$trustLevel,
+                friendNumber: ref.$friendNumber
             };
             this.friendLog.set(ref.id, friendLogCurrent2);
             database.setFriendLogCurrent(friendLogCurrent2);
@@ -12067,6 +12095,9 @@ speechSynthesis.getVoices();
             this.updateSharedFeed(true);
         }
         ctx.trustLevel = ref.$trustLevel;
+        if (ctx.friendNumber) {
+            ref.$friendNumber = ctx.friendNumber;
+        }
     };
 
     $app.methods.deleteFriendLog = function (row) {
@@ -12316,7 +12347,7 @@ speechSynthesis.getVoices();
         }
     });
 
-    $app.methods.acceptNotification = function (row) {
+    $app.methods.acceptFriendRequestNotification = function (row) {
         // FIXME: 메시지 수정
         this.$confirm('Continue? Accept Friend Request', 'Confirm', {
             confirmButtonText: 'Confirm',
@@ -12324,7 +12355,7 @@ speechSynthesis.getVoices();
             type: 'info',
             callback: (action) => {
                 if (action === 'confirm') {
-                    API.acceptNotification({
+                    API.acceptFriendRequestNotification({
                         notificationId: row.id
                     });
                 }
@@ -12540,7 +12571,7 @@ speechSynthesis.getVoices();
             stripe: true,
             size: 'mini',
             defaultSort: {
-                prop: '$friendNum',
+                prop: '$friendNumber',
                 order: 'descending'
             }
         },
@@ -15391,7 +15422,7 @@ speechSynthesis.getVoices();
                         userId
                     });
                 } else {
-                    API.acceptNotification({
+                    API.acceptFriendRequestNotification({
                         notificationId: key
                     });
                 }
@@ -19580,7 +19611,7 @@ speechSynthesis.getVoices();
                         this.stringComparer
                     );
                 }
-                if (!match && filters.includes('Rank') && ctx.ref.$friendNum) {
+                if (!match && filters.includes('Rank')) {
                     match = String(ctx.ref.$trustLevel)
                         .toUpperCase()
                         .includes(query.toUpperCase());
@@ -19589,7 +19620,6 @@ speechSynthesis.getVoices();
                     continue;
                 }
             }
-            ctx.ref.$friendNum = ctx.no;
             results.push(ctx.ref);
         }
         this.getAllUserStats();
@@ -20829,7 +20859,7 @@ speechSynthesis.getVoices();
                 name: $t('dialog.config_json.max_cache_size'),
                 default: '30',
                 type: 'number',
-                min: 20
+                min: 30
             },
             cache_expiry_delay: {
                 name: $t('dialog.config_json.cache_expiry_delay'),
@@ -21481,7 +21511,6 @@ speechSynthesis.getVoices();
             var unityPackage = ref.unityPackages[i];
             if (
                 unityPackage.variant &&
-                unityPackage.variant !== 'standard' &&
                 unityPackage.variant !== 'security'
             ) {
                 continue;
@@ -24338,7 +24367,7 @@ if (parameters[0] == 0) {
     );
 
     $app.methods.updateDatabaseVersion = async function () {
-        var databaseVersion = 10;
+        var databaseVersion = 11;
         if (this.databaseVersion < databaseVersion) {
             if (this.databaseVersion) {
                 var msgBox = this.$message({
@@ -24357,11 +24386,11 @@ if (parameters[0] == 0) {
                 await database.fixNegativeGPS(); // fix GPS being a negative value due to VRCX bug with traveling
                 await database.fixBrokenLeaveEntries(); // fix user instance timer being higher than current user location timer
                 await database.fixBrokenGroupInvites(); // fix notification v2 in wrong table
-                await database.updateTableForGroupNames(); // alter tables to include group name
                 await database.fixBrokenNotifications(); // fix notifications being null
                 await database.fixBrokenGroupChange(); // fix spam group left & name change
                 await database.fixCancelFriendRequestTypo(); // fix CancelFriendRequst typo
                 await database.fixBrokenGameLogDisplayNames(); // fix gameLog display names "DisplayName (userId)"
+                await database.upgradeDatabaseVersion(); // update database version
                 await database.vacuum(); // succ
                 await configRepository.setInt(
                     'VRCX_databaseVersion',
