@@ -663,7 +663,8 @@
                 "instance_full": "full",
                 "instance_closed": "closed",
                 "instance_hard_closed": "hard closed",
-                "close_instance": "Close Instance"
+                "close_instance": "Close Instance",
+                "instance_age_gated": "age gated"
             },
             "groups": {
                 "header": "Groups",
@@ -1030,6 +1031,7 @@
             "launch": "Launch",
             "create_instance": "Create Instance",
             "queueEnabled": "Queue",
+            "ageGate": "Age Gate",
             "normal": "Normal",
             "group": "Group",
             "legacy": "Legacy",

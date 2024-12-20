@@ -1355,6 +1355,7 @@ speechSynthesis.getVoices();
                 roleRestricted: false, // only present with group instance type
                 instancePersistenceEnabled: null,
                 playerPersistenceEnabled: null,
+                ageGate: null,
                 // VRCX
                 $fetchedAt: '',
                 ...json
@@ -7314,7 +7315,18 @@ speechSynthesis.getVoices();
             // Do Not Disturb
             style.busy = true;
         }
-        if (user.last_platform && user.last_platform !== 'standalonewindows') {
+        if (
+            user.platform &&
+            user.platform !== 'standalonewindows' &&
+            user.platform !== 'web'
+        ) {
+            style.mobile = true;
+        }
+        if (
+            user.last_platform &&
+            user.last_platform !== 'standalonewindows' &&
+            user.platform === 'web'
+        ) {
             style.mobile = true;
         }
         return style;
@@ -11873,6 +11885,10 @@ speechSynthesis.getVoices();
             `VRCX_friendNumber_${currentUser.id}`,
             0
         );
+        var maxFriendLogNumber = await database.getMaxFriendLogNumber();
+        if (this.friendNumber < maxFriendLogNumber) {
+            this.friendNumber = maxFriendLogNumber;
+        }
 
         var friendLogCurrentArray = await database.getFriendLogCurrent();
         for (var friend of friendLogCurrentArray) {
@@ -17345,6 +17361,7 @@ speechSynthesis.getVoices();
             'instanceDialogGroupAccessType',
             'plus'
         ),
+        ageGate: await configRepository.getBool('instanceDialogAgeGate', false),
         strict: false,
         location: '',
         shortName: '',
@@ -17391,6 +17408,9 @@ speechSynthesis.getVoices();
             if (D.accessType === 'invite+') {
                 tags.push('~canRequestInvite');
             }
+        }
+        if (D.accessType === 'group' && D.ageGate) {
+            tags.push('~ageGate');
         }
         if (D.region === 'US West') {
             tags.push(`~region(us)`);
@@ -17518,6 +17538,16 @@ speechSynthesis.getVoices();
                 params.canRequestInvite = true;
             }
         }
+        if (
+            D.ageGate &&
+            type === 'group' &&
+            this.hasGroupPermission(
+                D.groupRef,
+                'group-instance-age-gated-create'
+            )
+        ) {
+            params.ageGate = true;
+        }
         try {
             var args = await API.createInstance(params);
             D.location = args.json.location;
@@ -17600,6 +17630,10 @@ speechSynthesis.getVoices();
         await configRepository.setBool(
             'instanceDialogQueueEnabled',
             this.newInstanceDialog.queueEnabled
+        );
+        await configRepository.setBool(
+            'instanceDialogAgeGate',
+            this.newInstanceDialog.ageGate
         );
     };
 
@@ -21509,10 +21543,7 @@ speechSynthesis.getVoices();
         var variant = '';
         for (var i = ref.unityPackages.length - 1; i > -1; i--) {
             var unityPackage = ref.unityPackages[i];
-            if (
-                unityPackage.variant &&
-                unityPackage.variant !== 'security'
-            ) {
+            if (unityPackage.variant && unityPackage.variant !== 'security') {
                 continue;
             }
             if (
