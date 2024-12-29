@@ -1899,6 +1899,12 @@ speechSynthesis.getVoices();
         });
     };
 
+    API.$on('AVATAR:IMPOSTER:DELETE', function (args) {
+        if (args.json && $app.avatarDialog.visible) {
+            $app.showAvatarDialog($app.avatarDialog.id);
+        }
+    });
+
     // #endregion
     // #region | API: Notification
 
@@ -11043,7 +11049,7 @@ speechSynthesis.getVoices();
 
         var withCompany = this.lastLocation.playerList.size > 1;
         if (this.autoStateChangeNoFriends) {
-            withCompany = this.lastLocation.friendList.size > 1;
+            withCompany = this.lastLocation.friendList.size >= 1;
         }
 
         var currentStatus = API.currentUser.status;
@@ -12705,6 +12711,10 @@ speechSynthesis.getVoices();
         'VRCX_afkDesktopToast',
         false
     );
+    $app.data.overlayToast = await configRepository.getString(
+        'VRCX_overlayToast',
+        'Game Running'
+    );
     $app.data.minimalFeed = await configRepository.getBool(
         'VRCX_minimalFeed',
         false
@@ -12729,6 +12739,10 @@ speechSynthesis.getVoices();
         'VRCX_notificationTTSNickName',
         false
     );
+
+    // It's not necessary to store it in configRepo because it's rarely used.
+    $app.data.isTestTTSVisible = false;
+
     $app.data.notificationTTSVoice = await configRepository.getString(
         'VRCX_notificationTTSVoice',
         '0'
@@ -12913,6 +12927,10 @@ speechSynthesis.getVoices();
         await configRepository.setBool(
             'VRCX_afkDesktopToast',
             this.afkDesktopToast
+        );
+        await configRepository.setString(
+            'VRCX_overlayToast',
+            this.overlayToast
         );
         await configRepository.setBool(
             'VRCX_notificationTTSNickName',
@@ -15095,10 +15113,28 @@ speechSynthesis.getVoices();
                     continue;
                 }
                 if (unityPackage.platform === 'standalonewindows') {
+                    if (
+                        unityPackage.performanceRating === 'None' &&
+                        pc.performanceRating
+                    ) {
+                        continue;
+                    }
                     pc = unityPackage;
                 } else if (unityPackage.platform === 'android') {
+                    if (
+                        unityPackage.performanceRating === 'None' &&
+                        android.performanceRating
+                    ) {
+                        continue;
+                    }
                     android = unityPackage;
                 } else if (unityPackage.platform === 'ios') {
+                    if (
+                        unityPackage.performanceRating === 'None' &&
+                        ios.performanceRating
+                    ) {
+                        continue;
+                    }
                     ios = unityPackage;
                 }
             }
@@ -21121,6 +21157,20 @@ speechSynthesis.getVoices();
         }
     };
 
+    $app.methods.getAndDisplayScreenshotFromFile = async function () {
+        var filePath = await AppApi.OpenFileSelectorDialog(
+            await AppApi.GetVRChatPhotosLocation(),
+            '.png',
+            'PNG Files (*.png)|*.png'
+        );
+        if (filePath === '') {
+            return;
+        }
+
+        this.screenshotMetadataResetSearch();
+        this.getAndDisplayScreenshot(filePath);
+    };
+
     $app.methods.getAndDisplayScreenshot = function (
         path,
         needsCarouselFiles = true
@@ -22008,6 +22058,18 @@ speechSynthesis.getVoices();
         return style;
     };
 
+    $app.methods.userFavoriteWorldsStatusForFavTab = function (visibility) {
+        let style = '';
+        if (visibility === 'public') {
+            style = '';
+        } else if (visibility === 'friends') {
+            style = 'success';
+        } else {
+            style = 'info';
+        }
+        return style;
+    };
+
     $app.methods.changeWorldGroupVisibility = function (name, visibility) {
         var params = {
             type: 'world',
@@ -22538,15 +22600,20 @@ speechSynthesis.getVoices();
         var args = await API.call(`file/${fileId}`);
         var imageUrl = args.versions[1].file.url;
         var createdAt = args.versions[0].created_at;
-        var path = createdAt.slice(0, 7);
+        var monthFolder = createdAt.slice(0, 7);
         var fileNameDate = createdAt
             .replace(/:/g, '-')
             .replace(/T/g, '_')
             .replace(/Z/g, '');
         var fileName = `${displayName}_${fileNameDate}_${fileId}.png`;
-        var status = await AppApi.SaveStickerToFile(imageUrl, path, fileName);
+        var status = await AppApi.SaveStickerToFile(
+            imageUrl,
+            this.ugcFolderPath,
+            monthFolder,
+            fileName
+        );
         if (status) {
-            console.log(`Sticker saved to file: ${path}\\${fileName}`);
+            console.log(`Sticker saved to file: ${monthFolder}\\${fileName}`);
         }
     };
 
@@ -22779,11 +22846,16 @@ speechSynthesis.getVoices();
             return;
         }
         var createdAt = this.getPrintLocalDate(args.json);
-        var path = createdAt.toISOString().slice(0, 7);
+        var monthFolder = createdAt.toISOString().slice(0, 7);
         var fileName = this.getPrintFileName(args.json);
-        var status = await AppApi.SavePrintToFile(imageUrl, path, fileName);
+        var status = await AppApi.SavePrintToFile(
+            imageUrl,
+            this.ugcFolderPath,
+            monthFolder,
+            fileName
+        );
         if (status) {
-            console.log(`Print saved to file: ${path}\\${fileName}`);
+            console.log(`Print saved to file: ${monthFolder}\\${fileName}`);
         }
     };
 
@@ -24635,6 +24707,23 @@ if (parameters[0] == 0) {
         this.worldExportDialogVisible = true;
     };
 
+    $app.methods.handleCopyWorldExportData = function (event) {
+        event.target.tagName === 'TEXTAREA' && event.target.select();
+        navigator.clipboard
+            .writeText(this.worldExportContent)
+            .then(() => {
+                this.$message({
+                    message: 'Copied successfully!',
+                    type: 'success',
+                    duration: 2000
+                });
+            })
+            .catch((err) => {
+                console.error('Copy failed:', err);
+                this.$message.error('Copy failed!');
+            });
+    };
+
     $app.methods.updateWorldExportDialog = function () {
         const formatter = function (str) {
             if (/[\x00-\x1f,"]/.test(str) === true) {
@@ -24900,6 +24989,23 @@ if (parameters[0] == 0) {
         this.avatarExportDialogVisible = true;
     };
 
+    $app.methods.handleCopyAvatarExportData = function (event) {
+        event.target.tagName === 'TEXTAREA' && event.target.select();
+        navigator.clipboard
+            .writeText(this.avatarExportContent)
+            .then(() => {
+                this.$message({
+                    message: 'Copied successfully!',
+                    type: 'success',
+                    duration: 2000
+                });
+            })
+            .catch((err) => {
+                console.error('Copy failed:', err);
+                this.$message.error('Copy failed!');
+            });
+    };
+
     /**
      * Update the content of the avatar export dialog based on the selected options
      */
@@ -25141,6 +25247,23 @@ if (parameters[0] == 0) {
         this.friendExportDialogVisible = true;
     };
 
+    $app.methods.handleCopyFriendExportData = function (event) {
+        event.target.tagName === 'TEXTAREA' && event.target.select();
+        navigator.clipboard
+            .writeText(this.friendExportContent)
+            .then(() => {
+                this.$message({
+                    message: 'Copied successfully!',
+                    type: 'success',
+                    duration: 2000
+                });
+            })
+            .catch((err) => {
+                console.error('Copy failed:', err);
+                this.$message.error('Copy failed!');
+            });
+    };
+
     $app.methods.updateFriendExportDialog = function () {
         var _ = function (str) {
             if (/[\x00-\x1f,"]/.test(str) === true) {
@@ -25331,6 +25454,43 @@ if (parameters[0] == 0) {
 
     $app.methods.cancelNoteExport = function () {
         this.noteExportDialog.loading = false;
+    };
+
+    // user generated content
+    $app.data.ugcFolderPath = await configRepository.getString(
+        'VRCX_userGeneratedContentPath',
+        ''
+    );
+
+    $app.data.userGeneratedContentDialog = {
+        visible: false
+    };
+
+    $app.methods.setUGCFolderPath = async function (path) {
+        await configRepository.setString('VRCX_userGeneratedContentPath', path);
+        this.ugcFolderPath = path;
+    };
+
+    $app.methods.resetUGCFolder = function () {
+        this.setUGCFolderPath('');
+    };
+
+    $app.methods.openUGCFolder = async function () {
+        await AppApi.OpenUGCPhotosFolder(this.ugcFolderPath);
+    };
+
+    $app.methods.openUGCFolderSelector = async function () {
+        var D = this.userGeneratedContentDialog;
+
+        if (D.visible) return;
+
+        D.visible = true;
+        var newUGCFolder = await AppApi.OpenFolderSelectorDialog(
+            this.ugcFolderPath
+        );
+        D.visible = false;
+
+        await this.setUGCFolderPath(newUGCFolder);
     };
 
     // avatar database provider
@@ -27060,7 +27220,7 @@ if (parameters[0] == 0) {
             var unityPackage = D.ref.unityPackages[i];
             if (
                 unityPackage.variant &&
-                unityPackage.variant !== 'standard' &&
+                // unityPackage.variant !== 'standard' &&
                 unityPackage.variant !== 'security'
             ) {
                 continue;
